@@ -134,11 +134,13 @@ sub shift_upwards {
 
   for (my $i = 0; $i <= $#cluster; $i++){
     if ($cluster[$i][3] < $lowest){
-      $lowest = $cluster[$i][0];
+      $lowest = $cluster[$i][3];
     }
   }
   for (my $i = 0; $i <= $#cluster; $i++){
-    $cluster[$i][3] = $cluster[$i][3] + $lowest;
+    if ($lowest != 0){
+       $cluster[$i][3] = $cluster[$i][3] - $lowest + 0.1;
+    }
   }
   return \@cluster;
 }
@@ -149,11 +151,13 @@ sub shift_downwards {
 
   for (my $i = 0; $i <= $#cluster; $i++){
     if ($cluster[$i][3] > $highest){
-      $highest = $cluster[$i][0];
+      $highest = $cluster[$i][3];
     }
   }
   for (my $i = 0; $i <= $#cluster; $i++){
-    $cluster[$i][3] = $cluster[$i][3] - $highest;
+    if ($highest != 0){
+      $cluster[$i][3] = $cluster[$i][3] - $highest - 0.1;
+    }
   }
   return \@cluster;
 }
@@ -192,6 +196,16 @@ my @firstcluster  = @{$firstclusterref};
 my @secondcluster = @{$secondclusterref};
 @firstcluster  = reverse sort { $a->[3] <=> $b->[3] } @firstcluster;
 @secondcluster = sort { $a->[3] <=> $b->[3] } @secondcluster;
+
+print "Original First Cluster\n";
+print_cluster(\@firstcluster);
+my $firstclusterlength = $#firstcluster + 1; 
+print "Length of First Cluster: ", "$firstclusterlength\n\n";
+
+print "Original Second Cluster\n";
+print_cluster(\@secondcluster);
+my $secondclusterlength = $#secondcluster + 1;
+print "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
 # Now let us calculate the central co-ordinates
 #-----------------------------------------------------------------------------------------------
@@ -236,16 +250,6 @@ my @crossover = @{join_cuts(\@finalfirstcut, \@finalsecondcut)};
 
 #-----------------------------------------------------------------------------------------------
 # Printing out cuts
-
-print "Original First Cluster\n";
-print_cluster(\@firstcluster);
-my $firstclusterlength = $#firstcluster + 1; 
-print "Length of First Cluster: ", "$firstclusterlength\n\n";
-
-print "Original Second Cluster\n";
-print_cluster(\@secondcluster);
-my $secondclusterlength = $#secondcluster + 1;
-print "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
 print "First Cut\n";
 print_cluster(\@finalfirstcut);
