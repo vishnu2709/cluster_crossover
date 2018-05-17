@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use Math::Trig;
 
 
 print " ------------------------------------ \n";
@@ -18,29 +19,17 @@ sub print_cluster {
 
 sub read_file {
 
-	  my @a  = ();
-    my @b = ();
-
-    my $fname = $_[0];
-    open(my $fh, '<:encoding(UTF-8)', $fname)
-     or die "Couldn't open file!";
-    
-    while (my $row = <$fh>){
-       chomp $row;
-       my @atom = split(' ',$row);
-       push(@a, [@atom]);
-    }
-    
-    $fname = $_[1];
-    open($fh, '<:encoding(UTF-8)' , $fname)
-     or die "Couldn't open file!";
-    
-    while (my $row = <$fh>){
-       chomp $row;
-       my @atom = split(' ',$row);
-       push(@b, [@atom]);  
-    }
-    return (\@a, \@b);
+	my @cluster  = ();
+  my $fname = $_[0];
+  open(my $fh, '<:encoding(UTF-8)', $fname)
+   or die "Couldn't open file!";
+  
+  while (my $row = <$fh>){
+     chomp $row;
+     my @atom = split(' ',$row);
+     push(@cluster, [@atom]);
+  }
+  return \@cluster;
 }
 
 sub calculate_mean {
@@ -55,17 +44,67 @@ sub calculate_mean {
    return \@mean;
 }
 
-sub generate_random_numbers {
-  my @numberofeachtype = @{$_[0]};
-  my @randnumbers = ();
-  my @complementarynumbers = ();
-  my $tempnumber = 0;
-  for (my $i = 0; $i <= $#numberofeachtype; $i++){
-    $tempnumber = int(rand($numberofeachtype[$i] + 1));
-    push(@randnumbers, $tempnumber);
-    push(@complementarynumbers, ($numberofeachtype[$i] - $tempnumber))
+sub generate_random_angles {
+  my @randangles = (0.0, 0.0);
+  @randangles[0] = rand(2*pi);
+  @randangles[1] = rand(2*pi);
+  return \@randangles;
+}
+
+sub rotate_cluster_along_x {
+  my @cluster = @{$_[0]};
+  my $angle   = $_[1];
+
+  my @mean = @{calculate_mean(\@cluster)};
+  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @rotatedcluster = ();
+  my @rotatedatom = (0,0,0,0);
+  
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $rotatedatom[0] = $cluster[$i][0];
+    $rotatedatom[1] = $cluster[$i][1];
+    $rotatedatom[2] = $cluster[$i][2]*cos($angle) - $cluster[$i][3]*sin($angle);
+    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*sin($angle); 
+    push(@rotatedcluster, [@rotatedatom]);
   }
-  return (\@randnumbers, \@complementarynumbers);
+
+  @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
+  return \@rotatedcluster;
+} 
+
+sub rotate_cluster_along_y {
+  my @cluster = @{$_[0]};
+  my $angle   = $_[1];
+
+  my @mean = @{calculate_mean(\@cluster)};
+  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @rotatedcluster = ();
+  my @rotatedatom = (0,0,0,0);
+  
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $rotatedatom[0] = $cluster[$i][0];
+    $rotatedatom[1] = $cluster[$i][1]*cos($angle) - $cluster[$i][3]*sin($angle);
+    $rotatedatom[2] = $cluster[$i][2];
+    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*sin($angle); 
+    push(@rotatedcluster, [@rotatedatom]);
+  }
+  @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
+  return \@rotatedcluster;
+}
+
+sub check_stoichiometry {
+  my @cluster = @{$_[0]};
+  my @properstoich = @{$_[1]};
+  my @types = @{$_[2]};
+  my @clusterstoich = @{atoms_of_each_type(\@types, \@cluster)};
+
+  my $output = 'true';
+  for (my $i = 0; $i <= $#clusterstoich; $i++){
+    if ($clusterstoich[$i] != $properstoich[$i]){
+      $output = 'false';
+    }
+  }
+  return $output;
 }
 
 sub number_of_types {
@@ -76,7 +115,6 @@ sub number_of_types {
     chomp($cluster[$i][0]);
     my $v = 'true';
     for (my $j = ($i - 1); $j >= 0; $j--){
-            chomp($cluster[$j][0]);
       if ($cluster[$i][0] eq $cluster[$j][0]){
         $v = 'false';
       }
@@ -106,84 +144,83 @@ sub atoms_of_each_type {
   return \@numberofeachtype;
 }
 
-sub extract_atoms_of_type {
-	my @cluster = @{$_[0]};
-	my @types = @{$_[1]};
-	my @numbers = @{$_[2]};
-	my $count = 0;
-	my @extractedcluster = ();
-    
-    for(my $j = 0; $j <= $#types; $j++){
-       $count = 0;
-       for (my $i = 0; $i <= $#cluster; $i++){
-          if ($count >= $numbers[$j]){
-            last;
-          }
-       	  if ($types[$j] eq $cluster[$i][0]){
-       	  	push(@extractedcluster, $cluster[$i]);
-       	  	$count = $count + 1;
-       	  }
-       }
-   }
-   return \@extractedcluster;
+sub make_upper_cut {
+  my @cluster = @{$_[0]};
+  my @mean = @{calculate_mean(\@cluster)};
+  my @cut  = ();
+
+  for(my $i = 0; $i <= $#cluster; $i++){
+    if ($cluster[$i][3] > $mean[2]){
+      push(@cut, $cluster[$i]);
+    }
+  }
+  return \@cut;
 }
 
-sub shift_upwards {
+sub make_lower_cut {
   my @cluster = @{$_[0]};
-  my $lowest = 0;
+  my @mean = @{calculate_mean(\@cluster)};
+  my @cut  = ();
 
-  for (my $i = 0; $i <= $#cluster; $i++){
-    if ($cluster[$i][3] < $lowest){
-      $lowest = $cluster[$i][3];
+  for(my $i = 0; $i <= $#cluster; $i++){
+    if ($cluster[$i][3] < $mean[2]){
+      push(@cut, $cluster[$i]);
     }
   }
-  for (my $i = 0; $i <= $#cluster; $i++){
-    if ($lowest != 0){
-       $cluster[$i][3] = $cluster[$i][3] - $lowest + 0.1;
-    }
-  }
-  return \@cluster;
-}
-
-sub shift_downwards {
-  my @cluster = @{$_[0]};
-  my $highest = 0;
-
-  for (my $i = 0; $i <= $#cluster; $i++){
-    if ($cluster[$i][3] > $highest){
-      $highest = $cluster[$i][3];
-    }
-  }
-  for (my $i = 0; $i <= $#cluster; $i++){
-    if ($highest != 0){
-      $cluster[$i][3] = $cluster[$i][3] - $highest - 0.1;
-    }
-  }
-  return \@cluster;
+  return \@cut;
 }
 
 sub shift_to_origin {
   my @cluster = @{$_[0]};
-  my @mean = @{calculate_mean(\@cluster)};
+  my @mean = @{$_[1]};
+  my @shiftedcluster = @cluster;
 
   for (my $i = 0; $i <= $#cluster; $i++){
-    $cluster[$i][1] = $cluster[$i][1] - $mean[1];
-    $cluster[$i][2] = $cluster[$i][2] - $mean[2];
+    $shiftedcluster[$i][1] = $cluster[$i][1] - $mean[0];
+    $shiftedcluster[$i][2] = $cluster[$i][2] - $mean[1];
+    $shiftedcluster[$i][3] = $cluster[$i][3] - $mean[2];
   }
-  return \@cluster;
+  return \@shiftedcluster;
 }
 
-sub join_cuts {
-  my @firstcut = @{$_[0]};
-  my @secondcut = @{$_[1]};
+sub shift_back_to_original_position {
+  my @cluster = @{$_[0]};
+  my @mean = @{$_[1]};
+  my @shiftedcluster = @cluster;
+
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $shiftedcluster[$i][1] = $cluster[$i][1] + $mean[0];
+    $shiftedcluster[$i][2] = $cluster[$i][2] + $mean[1];
+    $shiftedcluster[$i][3] = $cluster[$i][3] + $mean[2];
+  }
+  return \@shiftedcluster;
+}
+
+sub merge_cuts {
+  my @basefirstcut  = @{$_[0]};
+  my @basesecondcut = @{$_[1]};
+  my @meanfirst  = @{$_[2]};
+  my @meansecond = @{$_[3]};
+  my @crossover = ();
+
+  @basefirstcut  = @{shift_to_origin(\@basefirstcut, \@meanfirst)};
+  @basesecondcut = @{shift_to_origin(\@basesecondcut, \@meansecond)};
+
+  @crossover = @{join_arrays(\@basefirstcut, \@basesecondcut)};
+  return \@crossover;
+}
+
+sub join_arrays {
+  my @firstarray  = @{$_[0]};
+  my @secondarray = @{$_[1]};
   my @crossover = ();
   
-  for (my $i = 0; $i <= $#firstcut; $i++){
-    push(@crossover, $firstcut[$i]);
+  for (my $i = 0; $i <= $#firstarray; $i++){
+    push(@crossover, $firstarray[$i]);
   }
 
-  for (my $i = 0; $i <= $#secondcut; $i++){
-    push(@crossover, $secondcut[$i]);
+  for (my $i = 0; $i <= $#secondarray; $i++){
+    push(@crossover, $secondarray[$i]);
   }
   return \@crossover;
 }
@@ -191,11 +228,8 @@ sub join_cuts {
 # Populating the arrays with file data
 #-----------------------------------------------------------------------------------------------
 
-my ($firstclusterref, $secondclusterref) = read_file($ARGV[0], $ARGV[1]);
-my @firstcluster  = @{$firstclusterref};
-my @secondcluster = @{$secondclusterref};
-@firstcluster  = reverse sort { $a->[3] <=> $b->[3] } @firstcluster;
-@secondcluster = sort { $a->[3] <=> $b->[3] } @secondcluster;
+my @firstcluster  = @{read_file($ARGV[0])};
+my @secondcluster = @{read_file($ARGV[1])};
 
 print "Original First Cluster\n";
 print_cluster(\@firstcluster);
@@ -209,7 +243,8 @@ print "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
 # Now let us calculate the central co-ordinates
 #-----------------------------------------------------------------------------------------------
-
+my @newcluster = @{rotate_cluster_along_x(\@firstcluster, '1.57')};
+print_cluster(\@newcluster);
 my @meanfirst = @{calculate_mean(\@firstcluster)};
 my @meansecond = @{calculate_mean(\@secondcluster)};
 
@@ -224,29 +259,12 @@ print "$meansecond[0], ", "$meansecond[1], ", "$meansecond[2]\n\n";
 my @types = @{number_of_types(\@firstcluster)};
 my @numberofeachtype = @{atoms_of_each_type(\@types, \@firstcluster)};
 
-# Generating a random number of atoms of each type to extract from the cluster
+# Making and Shifting Cuts (Taking out essential atoms) 
 #-----------------------------------------------------------------------------------------------
 
-my ($randomnumbersref, $complementarynumbersref) = generate_random_numbers(\@numberofeachtype);
-my @randnumbers = @{$randomnumbersref};
-my @complementarynumbers = @{$complementarynumbersref}; 
-
-# Base First Cut (Taking out essential atoms) 
-#-----------------------------------------------------------------------------------------------
-
-my @basefirstcut = @{extract_atoms_of_type(\@firstcluster, \@types, \@randnumbers)};
-my @basesecondcut = @{extract_atoms_of_type(\@secondcluster, \@types, \@complementarynumbers)};
-
-# Shifting the cuts and joining them to form the final crossover result
-#-----------------------------------------------------------------------------------------------
-
-my @upwardshiftedfirstcut    = @{shift_upwards(\@basefirstcut)};
-my @downwardshiftedsecondcut = @{shift_downwards(\@basesecondcut)};
-
-my @finalfirstcut = @{shift_to_origin(\@upwardshiftedfirstcut)};
-my @finalsecondcut = @{shift_to_origin(\@downwardshiftedsecondcut)};
-
-my @crossover = @{join_cuts(\@finalfirstcut, \@finalsecondcut)};
+my @finalfirstcut  = @{make_upper_cut(\@firstcluster)};
+my @finalsecondcut = @{make_lower_cut(\@secondcluster)};
+my @crossover     = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
 
 #-----------------------------------------------------------------------------------------------
 # Printing out cuts
