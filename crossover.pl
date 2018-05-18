@@ -196,20 +196,6 @@ sub shift_back_to_original_position {
   return \@shiftedcluster;
 }
 
-sub merge_cuts {
-  my @basefirstcut  = @{$_[0]};
-  my @basesecondcut = @{$_[1]};
-  my @meanfirst  = @{$_[2]};
-  my @meansecond = @{$_[3]};
-  my @crossover = ();
-
-  @basefirstcut  = @{shift_to_origin(\@basefirstcut, \@meanfirst)};
-  @basesecondcut = @{shift_to_origin(\@basesecondcut, \@meansecond)};
-
-  @crossover = @{join_arrays(\@basefirstcut, \@basesecondcut)};
-  return \@crossover;
-}
-
 sub join_arrays {
   my @firstarray  = @{$_[0]};
   my @secondarray = @{$_[1]};
@@ -222,6 +208,20 @@ sub join_arrays {
   for (my $i = 0; $i <= $#secondarray; $i++){
     push(@crossover, $secondarray[$i]);
   }
+  return \@crossover;
+}
+
+sub merge_cuts {
+  my @basefirstcut  = @{$_[0]};
+  my @basesecondcut = @{$_[1]};
+  my @meanfirst  = @{$_[2]};
+  my @meansecond = @{$_[3]};
+  my @crossover = ();
+
+  @basefirstcut  = @{shift_to_origin(\@basefirstcut, \@meanfirst)};
+  @basesecondcut = @{shift_to_origin(\@basesecondcut, \@meansecond)};
+
+  @crossover = @{join_arrays(\@basefirstcut, \@basesecondcut)};
   return \@crossover;
 }
 
@@ -263,18 +263,13 @@ my @numberofeachtype = @{atoms_of_each_type(\@types, \@firstcluster)};
 
 my @finalfirstcut  = @{make_upper_cut(\@firstcluster)};
 my @finalsecondcut = @{make_lower_cut(\@secondcluster)};
-
-print "Second Cut\n";
-print_cluster(\@finalsecondcut);
-my $finalsecondcutlength = $#finalsecondcut + 1;
-print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
-
-my @crossover     = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
-my $check = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
 my $iteration = 0;
-my @firstclusterangles  = (0, 0);
-my @secondclusterangles = (0, 0); 
-my $finalfirstcutlength = 0;
+
+my @firstclusterangles   = (0, 0);
+my @secondclusterangles  = (0, 0); 
+my $finalfirstcutlength  = 0;
 my $finalsecondcutlength = 0;
 
 while ($check eq 'false'){
@@ -316,11 +311,11 @@ while ($check eq 'false'){
   print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
 
   @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
-  $check = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+  $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
 }
 
 #-----------------------------------------------------------------------------------------------
-# Printing out cuts
+# Printing out final crossover result
 
 print "Final Crossover\n";
 print_cluster(\@crossover);
