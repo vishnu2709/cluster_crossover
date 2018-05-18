@@ -64,7 +64,7 @@ sub rotate_cluster_along_x {
     $rotatedatom[0] = $cluster[$i][0];
     $rotatedatom[1] = $cluster[$i][1];
     $rotatedatom[2] = $cluster[$i][2]*cos($angle) - $cluster[$i][3]*sin($angle);
-    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*sin($angle); 
+    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*cos($angle); 
     push(@rotatedcluster, [@rotatedatom]);
   }
 
@@ -85,7 +85,7 @@ sub rotate_cluster_along_y {
     $rotatedatom[0] = $cluster[$i][0];
     $rotatedatom[1] = $cluster[$i][1]*cos($angle) - $cluster[$i][3]*sin($angle);
     $rotatedatom[2] = $cluster[$i][2];
-    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*sin($angle); 
+    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*cos($angle); 
     push(@rotatedcluster, [@rotatedatom]);
   }
   @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
@@ -243,8 +243,7 @@ print "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
 # Now let us calculate the central co-ordinates
 #-----------------------------------------------------------------------------------------------
-my @newcluster = @{rotate_cluster_along_x(\@firstcluster, '1.57')};
-print_cluster(\@newcluster);
+
 my @meanfirst = @{calculate_mean(\@firstcluster)};
 my @meansecond = @{calculate_mean(\@secondcluster)};
 
@@ -264,20 +263,64 @@ my @numberofeachtype = @{atoms_of_each_type(\@types, \@firstcluster)};
 
 my @finalfirstcut  = @{make_upper_cut(\@firstcluster)};
 my @finalsecondcut = @{make_lower_cut(\@secondcluster)};
-my @crossover     = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
-
-#-----------------------------------------------------------------------------------------------
-# Printing out cuts
-
-print "First Cut\n";
-print_cluster(\@finalfirstcut);
-my $finalfirstcutlength = $#finalfirstcut + 1;
-print "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
 print "Second Cut\n";
 print_cluster(\@finalsecondcut);
 my $finalsecondcutlength = $#finalsecondcut + 1;
 print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
+
+my @crossover     = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+my $check = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+my $iteration = 0;
+my @firstclusterangles  = (0, 0);
+my @secondclusterangles = (0, 0); 
+my $finalfirstcutlength = 0;
+my $finalsecondcutlength = 0;
+
+while ($check eq 'false'){
+  $iteration = $iteration + 1;
+  print "------------------------------\n";
+  print "Iteration: ","$iteration\n";
+  print "------------------------------\n";
+  @firstclusterangles  = @{generate_random_angles()};
+  @secondclusterangles = @{generate_random_angles()};
+
+  # First Cluster 
+  my @xrotatedcluster  = @{rotate_cluster_along_x(\@firstcluster, $firstclusterangles[0])};
+  my @xyrotatedcluster = @{rotate_cluster_along_y(\@xrotatedcluster, $firstclusterangles[1])};
+
+  print "Rotated First Cluster\n";
+  print_cluster(\@xyrotatedcluster);
+  $firstclusterlength = $#xyrotatedcluster + 1;
+  print "\nLength of Rotated First Cluster: ", "$firstclusterlength\n\n";
+  @finalfirstcut = @{make_upper_cut(\@xyrotatedcluster)};
+
+  print "First Cut\n";
+  print_cluster(\@finalfirstcut);
+  $finalfirstcutlength = $#finalfirstcut + 1;
+  print "Length of First Cut: ", "$finalfirstcutlength\n\n";
+
+  # Second Cluster 
+  my @xrotatedcluster  = @{rotate_cluster_along_x(\@secondcluster, $secondclusterangles[0])};
+  my @xyrotatedcluster = @{rotate_cluster_along_y(\@xrotatedcluster, $secondclusterangles[1])};
+
+  print "Rotated Second Cluster\n";
+  print_cluster(\@xyrotatedcluster);
+  $secondclusterlength = $#xyrotatedcluster + 1;
+  print "\nLength of Rotated Second Cluster: ", "$secondclusterlength\n\n";
+  @finalsecondcut = @{make_lower_cut(\@xyrotatedcluster)};
+
+  print "Second Cut\n";
+  print_cluster(\@finalsecondcut);
+  $finalsecondcutlength = $#finalsecondcut + 1;
+  print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
+
+  @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+  $check = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+}
+
+#-----------------------------------------------------------------------------------------------
+# Printing out cuts
 
 print "Final Crossover\n";
 print_cluster(\@crossover);
