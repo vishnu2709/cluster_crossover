@@ -19,7 +19,7 @@ sub print_cluster {
 
 sub read_file {
 
-	my @cluster  = ();
+  my @cluster  = ();
   my $fname = $_[0];
   open(my $fh, '<:encoding(UTF-8)', $fname)
    or die "Couldn't open file!";
@@ -30,6 +30,17 @@ sub read_file {
      push(@cluster, [@atom]);
   }
   return \@cluster;
+}
+
+sub write_to_file {
+
+   my @cluster = @{$_[0]};
+   my $fname = $_[1];
+   open(my $fh, '>', $fname);
+
+   for (my $i = 0; $i <= $#cluster; $i++){
+      print $fh "$cluster[$i][0] ", "$cluster[$i][1] ", "$cluster[$i][2] ", "$cluster[$i][3]\n";
+   }
 }
 
 sub calculate_mean {
@@ -216,7 +227,7 @@ sub merge_cuts {
   my @basesecondcut = @{$_[1]};
   my @meanfirst  = @{$_[2]};
   my @meansecond = @{$_[3]};
-  my @crossover = ();
+  my @crossover  = ();
 
   @basefirstcut  = @{shift_to_origin(\@basefirstcut, \@meanfirst)};
   @basesecondcut = @{shift_to_origin(\@basesecondcut, \@meansecond)};
@@ -321,4 +332,10 @@ print "Final Crossover\n";
 print_cluster(\@crossover);
 my $crossoverlength = $#crossover + 1;
 print "Length of Crossover: ", "$crossoverlength\n";
+#-----------------------------------------------------------------------------------------------
+# Writing the final crossover geometry to file
+
+my $newfilename = "new_cluster.txt";
+print "Writing Crossover to File: ", "$newfilename\n";
+write_to_file(\@crossover, $newfilename);
 #-----------------------------------------------------------------------------------------------
