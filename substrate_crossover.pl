@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Math::Trig;
+use POSIX qw(ceil floor);
 
 print "----------------------------------\n";
 print "    CROSSOVER ON SUBSTRATE        \n";
@@ -48,40 +49,32 @@ sub get_magnitude_of_lattice_vectors {
 	return \@magnitude;
 }
 
-sub check_along_a {
+sub relative_coordinates {
 	my @atom = @{$_[0]};
 	my @collection = @{$_[1]};
-	my $check = 'true';
-	for (my $j = 0; $j <= $#collection; $j++){
-		if ($atom[2] == $collection[$j][2] and $atom[3] == $collection[$j][3]
-			and $atom[1] != $collection[$j][1]){
-			$check = 'false';
-		}
+	my $index = $_[2];
+	my @new_atom = (0, 0, 0, 0, 0);
+	my @relative_collection = ();
+	splice @collection, $index, 1;
+	for (my $i = 0; $i <= $#collection ; $i++){
+		$new_atom[0] = $collection[$i][0];
+		$new_atom[1] = $collection[$i][1] - $atom[1];
+		$new_atom[2] = $collection[$i][2] - $atom[2];
+		$new_atom[3] = $collection[$i][3] - $atom[3];
+		$new_atom[4] = $collection[$i][4];
+		push(@relative_collection, [@new_atom]);
 	}
-	return $check;
+	return \@relative_collection;
 }
 
-sub check_along_b {
-	my @atom = @{$_[0]};
-	my @collection = @{$_[1]};
-	my $check = 'true';
-	for (my $j = 0; $j <= $#collection; $j++){
-		if ($atom[1] == $collection[$j][1] and $atom[3] == $collection[$j][3]
-			and $atom[2] != $collection[$j][2]){
-			$check = 'false';
-		}
-	}
-	return $check;
-}
-
-sub check_along_c {
-	my @atom = @{$_[0]};
-	my @collection = @{$_[1]};
-	my $check = 'true';
-	for (my $j = 0; $j <= $#collection; $j++){
-		if ($atom[1] == $collection[$j][1] and $atom[2] == $collection[$j][2]
-			and $atom[3] != $collection[$j][3]){
-			$check = 'false';
+sub lattice_check {
+	my @relative_collection = @{$_[0]};
+	my $direction = $_[1];
+	my $check = 'false';
+	for (my $j = 0; $j <= $#relative_collection; $j++){
+		if (abs($relative_collection[$j][$direction]) < 0.1){
+			$check = 'true';
+			next;
 		}
 	}
 	return $check;
@@ -93,7 +86,7 @@ sub separate_cluster_from_substrate {
 	my $check_a = 0;
 	my $check_b = 0;
 	my $check_c = 0;
-	my @atom = (0, 0, 0, 0, 0);
+	my @atom = [0, 0, 0, 0, 0];
 
 	for (my $i = 0; $i <= $#collection; $i++){
 		$atom[0] = $collection[$i][0];
@@ -101,10 +94,11 @@ sub separate_cluster_from_substrate {
 		$atom[2] = $collection[$i][2];
 		$atom[3] = $collection[$i][3];
 		$atom[4] = $collection[$i][4];
-		$check_a = check_along_a(\@atom, \@collection);
-		$check_b = check_along_b(\@atom, \@collection);
-		$check_c = check_along_c(\@atom, \@collection);
-		if ($check_a eq 'true' and $check_b eq 'true' and $check_c eq 'true'){
+		my @relative_collection = @{relative_coordinates(\@atom, \@collection, $i)};
+		$check_a = lattice_check(\@relative_collection, 1);
+		$check_b = lattice_check(\@relative_collection, 2);
+		$check_c = lattice_check(\@relative_collection, 3);
+		if ($check_a eq 'false' or $check_b eq 'false' or $check_c eq 'false'){
 			push(@cluster, $collection[$i]);
 		}
 	}
@@ -130,13 +124,12 @@ my @collection = @{read_file("geometry.in")};
 
 my ($lattice_vectors_ref, $collection_ref)  = extract_lattice_vectors(\@collection);
 my @lattice_vectors = @{$lattice_vectors_ref};
+my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 
-@collection = @{$collection_ref};
-
-my @magnitude = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
+@collection = @{convert_frac_to_atom($collection_ref, $lattice_vectors_ref)};
 
 my @cluster = @{separate_cluster_from_substrate(\@collection)};
-
+print "Third Pass\n\n";
 for (my $i = 0; $i <= $#cluster; $i++){
 	print "$cluster[$i][0] ","$cluster[$i][1] ","$cluster[$i][2] ","$cluster[$i][3] ","$cluster[$i][4]\n"; 
 }
