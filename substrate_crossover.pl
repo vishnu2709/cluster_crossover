@@ -67,6 +67,32 @@ sub relative_coordinates {
 	return \@relative_collection;
 }
 
+sub nearest_neighbours {
+	my @relative_collection = @{$_[0]};
+	my @sorted_neighbours = ();
+	my @nearest_neighbour_array = ();
+	my @new_atom = (0, 0, 0, 0, 0, 0);
+	for (my $i = 0; $i <= $#relative_collection; $i++){
+		$new_atom[0] = $relative_collection[$i][0];
+		$new_atom[1] = $relative_collection[$i][1];
+		$new_atom[2] = $relative_collection[$i][2];
+		$new_atom[3] = $relative_collection[$i][3];
+		$new_atom[4] = $relative_collection[$i][4];
+		for (my $j = 1; $j <= 3; $j++){
+			$new_atom[5] = $new_atom[5] + $relative_collection[$i][$j]**2;
+		}
+		$new_atom[5] = sqrt($new_atom[5]);
+		push(@sorted_neighbours, [@new_atom]);
+	}
+	@sorted_neighbours = sort { $a->[5] <=> $b->[5] } @sorted_neighbours;
+
+	for(my $j = 0; $j < 6; $j++){
+		my @arr = shift @sorted_neighbours;
+		push(@nearest_neighbour_array, @arr);
+	}
+	return \@nearest_neighbour_array;
+}
+
 sub lattice_check {
 	my @relative_collection = @{$_[0]};
 	my $direction = $_[1];
@@ -95,9 +121,10 @@ sub separate_cluster_from_substrate {
 		$atom[3] = $collection[$i][3];
 		$atom[4] = $collection[$i][4];
 		my @relative_collection = @{relative_coordinates(\@atom, \@collection, $i)};
-		$check_a = lattice_check(\@relative_collection, 1);
-		$check_b = lattice_check(\@relative_collection, 2);
-		$check_c = lattice_check(\@relative_collection, 3);
+		my @nearest_neighbour_array  = @{nearest_neighbours(\@relative_collection)};
+		$check_a = lattice_check(\@nearest_neighbour_array, 1);
+		$check_b = lattice_check(\@nearest_neighbour_array, 2);
+		$check_c = lattice_check(\@nearest_neighbour_array, 3);
 		if ($check_a eq 'false' or $check_b eq 'false' or $check_c eq 'false'){
 			push(@cluster, $collection[$i]);
 		}
@@ -120,7 +147,7 @@ sub convert_frac_to_atom {
 
 # ---------------------------------------------------------
 
-my @collection = @{read_file("geometry.in")};
+my @collection = @{read_file($ARGV[0])};
 
 my ($lattice_vectors_ref, $collection_ref)  = extract_lattice_vectors(\@collection);
 my @lattice_vectors = @{$lattice_vectors_ref};
@@ -129,9 +156,10 @@ my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 @collection = @{convert_frac_to_atom($collection_ref, $lattice_vectors_ref)};
 
 my @cluster = @{separate_cluster_from_substrate(\@collection)};
-print "Third Pass\n\n";
+
 for (my $i = 0; $i <= $#cluster; $i++){
 	print "$cluster[$i][0] ","$cluster[$i][1] ","$cluster[$i][2] ","$cluster[$i][3] ","$cluster[$i][4]\n"; 
 }
+
 print "$#cluster\n";
 print "$#collection\n";
