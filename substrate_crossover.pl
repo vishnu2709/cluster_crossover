@@ -86,7 +86,7 @@ sub nearest_neighbours {
 	}
 	@sorted_neighbours = sort { $a->[5] <=> $b->[5] } @sorted_neighbours;
 
-	for(my $j = 0; $j < 6; $j++){
+	for(my $j = 0; $j <= 5; $j++){
 		my @arr = shift @sorted_neighbours;
 		push(@nearest_neighbour_array, @arr);
 	}
@@ -106,7 +106,7 @@ sub lattice_check {
 	return $check;
 }
 
-sub separate_cluster_from_substrate {
+sub identify_cluster {
 	my @collection = @{$_[0]};
 	my @cluster = ();
 	my $check_a = 0;
@@ -132,6 +132,23 @@ sub separate_cluster_from_substrate {
 	return \@cluster;
 }
 
+sub identify_substrate {
+	my @collection = @{$_[0]};
+	my @cluster = @{$_[1]};
+
+	for (my $j = 0; $j <= $#cluster;$j++){
+		for(my $i = 0; $i <= $#collection;$i++){
+			if ($cluster[$j][1] == $collection[$i][1] 
+				and $cluster[$j][2] == $collection[$i][2] 
+				and $cluster[$j][3] == $collection[$i][3]){
+				splice @collection, $i, 1;
+			}
+		}
+	}
+
+	return \@collection;
+}
+
 sub convert_frac_to_atom {
 	my @collection = @{$_[0]};
 	my @lattice_vectors = @{$_[1]};
@@ -154,12 +171,12 @@ my @lattice_vectors = @{$lattice_vectors_ref};
 my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 
 @collection = @{convert_frac_to_atom($collection_ref, $lattice_vectors_ref)};
-
-my @cluster = @{separate_cluster_from_substrate(\@collection)};
+my @cluster = @{identify_cluster(\@collection)};
+my @substrate = @{identify_substrate(\@collection, \@cluster)};
 
 for (my $i = 0; $i <= $#cluster; $i++){
 	print "$cluster[$i][0] ","$cluster[$i][1] ","$cluster[$i][2] ","$cluster[$i][3] ","$cluster[$i][4]\n"; 
 }
 
 print "$#cluster\n";
-print "$#collection\n";
+print "$#substrate\n";
