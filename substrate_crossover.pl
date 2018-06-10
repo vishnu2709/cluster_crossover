@@ -7,8 +7,8 @@ print "----------------------------------\n";
 print "    CROSSOVER ON SUBSTRATE        \n";
 print "----------------------------------\n";
 
-# Defining subroutines that are required for the crossover
-# ---------------------------------------------------------
+# Defining subroutines that are required for the isolating substrate and cluster
+# --------------------------------------------------------------------------------
 
 sub read_file {
 	my $fname = $_[0];
@@ -47,6 +47,19 @@ sub get_magnitude_of_lattice_vectors {
 		$magnitude[$i] = sqrt($magnitude[$i]);
 	}
 	return \@magnitude;
+}
+
+sub convert_frac_to_atom {
+	my @collection = @{$_[0]};
+	my @lattice_vectors = @{$_[1]};
+	my @magnitude = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
+
+	for (my $i = 0; $i <= $#collection; $i++){
+		for (my $j = 0; $j <= $#magnitude; $j++){
+			$collection[$i][$j + 1] = $collection[$i][$j + 1]*$magnitude[$j] 
+		}
+	}
+	return \@collection;
 }
 
 sub relative_coordinates {
@@ -149,34 +162,253 @@ sub identify_substrate {
 	return \@collection;
 }
 
-sub convert_frac_to_atom {
-	my @collection = @{$_[0]};
-	my @lattice_vectors = @{$_[1]};
-	my @magnitude = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
+# Defining subroutines needed for crossover
+# --------------------------------------------------------------------------------
 
-	for (my $i = 0; $i <= $#collection; $i++){
-		for (my $j = 0; $j <= $#magnitude; $j++){
-			$collection[$i][$j + 1] = $collection[$i][$j + 1]*$magnitude[$j] 
-		}
+sub print_cluster {
+	my @cluster = @{$_[0]};
+	for(my $i = 0; $i <= $#cluster; $i++){
+		print "atom ", "$cluster[$i][1] ", "$cluster[$i][2] ", "$cluster[$i][3] ","$cluster[$i][4]\n";
 	}
-	return \@collection;
 }
 
-# ---------------------------------------------------------
+sub calculate_mean {
+   my @cluster = @{$_[0]};
+   my @mean = (0, 0, 0);
 
-my @collection = @{read_file($ARGV[0])};
+   for(my $i = 0; $i <= $#cluster; $i++){
+     for (my $j = 0; $j <= 2; $j++){
+        $mean[$j] = $mean[$j] + ($cluster[$i][$j + 1]/($#cluster + 1));
+     }
+   }
+   return \@mean;
+}
 
-my ($lattice_vectors_ref, $collection_ref)  = extract_lattice_vectors(\@collection);
+
+sub generate_random_angles {
+  my @randangles = (0.0, 0.0);
+  @randangles[0] = rand(2*pi);
+  @randangles[1] = rand(2*pi);
+  return \@randangles;
+}
+
+sub rotate_cluster_along_x {
+  my @cluster = @{$_[0]};
+  my $angle   = $_[1];
+
+  my @mean = @{calculate_mean(\@cluster)};
+  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @rotatedcluster = ();
+  my @rotatedatom = (0,0,0,0);
+  
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $rotatedatom[0] = $cluster[$i][0];
+    $rotatedatom[1] = $cluster[$i][1];
+    $rotatedatom[2] = $cluster[$i][2]*cos($angle) - $cluster[$i][3]*sin($angle);
+    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*cos($angle); 
+    push(@rotatedcluster, [@rotatedatom]);
+  }
+
+  @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
+  return \@rotatedcluster;
+} 
+
+sub rotate_cluster_along_y {
+  my @cluster = @{$_[0]};
+  my $angle   = $_[1];
+
+  my @mean = @{calculate_mean(\@cluster)};
+  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @rotatedcluster = ();
+  my @rotatedatom = (0,0,0,0);
+  
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $rotatedatom[0] = $cluster[$i][0];
+    $rotatedatom[1] = $cluster[$i][1]*cos($angle) - $cluster[$i][3]*sin($angle);
+    $rotatedatom[2] = $cluster[$i][2];
+    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*cos($angle); 
+    push(@rotatedcluster, [@rotatedatom]);
+  }
+  @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
+  return \@rotatedcluster;
+}
+
+
+sub check_stoichiometry {
+  my @cluster = @{$_[0]};
+  my @properstoich = @{$_[1]};
+  my @types = @{$_[2]};
+  my @clusterstoich = @{atoms_of_each_type(\@types, \@cluster)};
+
+  my $output = 'true';
+  for (my $i = 0; $i <= $#clusterstoich; $i++){
+    if ($clusterstoich[$i] != $properstoich[$i]){
+      $output = 'false';
+    }
+  }
+  return $output;
+}
+
+sub number_of_types {
+  my @types= ();
+  my @cluster = @{$_[0]};
+  push(@types, $cluster[0][4]);
+  for(my $i = 1; $i <= $#cluster; $i++){
+    my $v = 'true';
+    for (my $j = ($i - 1); $j >= 0; $j--){
+      if ($cluster[$i][4] eq $cluster[$j][4]){
+        $v = 'false';
+      }
+    }
+    if ($v eq 'true'){
+      push(@types, $cluster[$i][4]);
+    }
+  }
+  return \@types;
+}
+
+sub atoms_of_each_type {
+  my @types = @{$_[0]};
+  my @cluster = @{$_[1]};
+  my @numberofeachtype = ();
+  my $number = 0;
+
+  for (my $i = 0; $i <= $#types; $i++){
+    $number = 0;
+    for (my $j = 0; $j <= $#cluster; $j++){
+      if ($cluster[$j][4] eq $types[$i]){
+        $number = $number + 1;
+      }
+    }
+    push(@numberofeachtype, $number);
+  }
+  return \@numberofeachtype;
+}
+
+sub make_upper_cut {
+  my @cluster = @{$_[0]};
+  my @mean = @{calculate_mean(\@cluster)};
+  my @cut  = ();
+
+  for(my $i = 0; $i <= $#cluster; $i++){
+    if ($cluster[$i][3] > $mean[2]){
+      push(@cut, $cluster[$i]);
+    }
+  }
+  return \@cut;
+}
+
+sub make_lower_cut {
+  my @cluster = @{$_[0]};
+  my @mean = @{calculate_mean(\@cluster)};
+  my @cut  = ();
+
+  for(my $i = 0; $i <= $#cluster; $i++){
+    if ($cluster[$i][3] < $mean[2]){
+      push(@cut, $cluster[$i]);
+    }
+  }
+  return \@cut;
+}
+
+sub shift_to_origin {
+  my @cluster = @{$_[0]};
+  my @mean = @{$_[1]};
+  my @shiftedcluster = @cluster;
+
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $shiftedcluster[$i][1] = $cluster[$i][1] - $mean[0];
+    $shiftedcluster[$i][2] = $cluster[$i][2] - $mean[1];
+    $shiftedcluster[$i][3] = $cluster[$i][3] - $mean[2];
+  }
+  return \@shiftedcluster;
+}
+
+sub shift_back_to_original_position {
+  my @cluster = @{$_[0]};
+  my @mean = @{$_[1]};
+  my @shiftedcluster = @cluster;
+
+  for (my $i = 0; $i <= $#cluster; $i++){
+    $shiftedcluster[$i][1] = $cluster[$i][1] + $mean[0];
+    $shiftedcluster[$i][2] = $cluster[$i][2] + $mean[1];
+    $shiftedcluster[$i][3] = $cluster[$i][3] + $mean[2];
+  }
+  return \@shiftedcluster;
+}
+
+sub join_arrays {
+  my @firstarray  = @{$_[0]};
+  my @secondarray = @{$_[1]};
+  my @crossover = ();
+  
+  for (my $i = 0; $i <= $#firstarray; $i++){
+    push(@crossover, $firstarray[$i]);
+  }
+
+  for (my $i = 0; $i <= $#secondarray; $i++){
+    push(@crossover, $secondarray[$i]);
+  }
+  return \@crossover;
+}
+
+
+# --------------------------------------------------------------------------------
+# Reading all of the data into an array
+
+my @first_collection = @{read_file($ARGV[0])};
+
+# Isolating the lattice vectors and finding the magnitude
+my ($lattice_vectors_ref, $first_collection_ref)  = extract_lattice_vectors(\@first_collection);
 my @lattice_vectors = @{$lattice_vectors_ref};
 my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 
-@collection = @{convert_frac_to_atom($collection_ref, $lattice_vectors_ref)};
-my @cluster = @{identify_cluster(\@collection)};
-my @substrate = @{identify_substrate(\@collection, \@cluster)};
+# Converting fractional coordinates into absolute numbers for simplicity
+@first_collection = @{convert_frac_to_atom($first_collection_ref, $lattice_vectors_ref)};
 
-for (my $i = 0; $i <= $#cluster; $i++){
-	print "$cluster[$i][0] ","$cluster[$i][1] ","$cluster[$i][2] ","$cluster[$i][3] ","$cluster[$i][4]\n"; 
-}
+# Separating cluster from substrate
+my @first_cluster   = @{identify_cluster(\@first_collection)};
+my @substrate = @{identify_substrate(\@first_collection, \@first_cluster)};
 
-print "$#cluster\n";
+# Printing cluster
+print "First Cluster\n";
+print_cluster(\@first_cluster);
+print "$#first_cluster\n";
+print "$#substrate\n\n";
+
+my @second_collection = @{read_file($ARGV[1])};
+
+# Isolating the lattice vectors and finding the magnitude
+my ($second_lattice_vectors_ref, $second_collection_ref)  = extract_lattice_vectors(\@second_collection);
+@lattice_vectors = @{$second_lattice_vectors_ref};
+@magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
+
+# Converting fractional coordinates into absolute numbers for simplicity
+@second_collection = @{convert_frac_to_atom($second_collection_ref, $second_lattice_vectors_ref)};
+
+# Separating cluster from substrate
+my @second_cluster   = @{identify_cluster(\@second_collection)};
+@substrate = @{identify_substrate(\@second_collection, \@second_cluster)};
+
+# Printing cluster
+print "Second Cluster\n";
+print_cluster(\@second_cluster);
+print "$#second_cluster\n";
 print "$#substrate\n";
+
+# Finding the types of atoms and no of each
+#------------------------------------------------------------------------------
+
+my @types = @{number_of_types(\@first_cluster)};
+my @numberofeachtype = @{atoms_of_each_type(\@types, \@first_cluster)};
+
+my @finalfirstcut  = @{make_upper_cut(\@firstcluster)};
+my @finalsecondcut = @{make_lower_cut(\@secondcluster)};
+my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+my $iteration = 0;
+
+my @firstclusterangles   = (0, 0);
+my @secondclusterangles  = (0, 0); 
+my $finalfirstcutlength  = 0;
+my $finalsecondcutlength = 0;
