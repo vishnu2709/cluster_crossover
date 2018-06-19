@@ -1,7 +1,6 @@
 use strict;
 use warnings;
 use Math::Trig;
-use POSIX qw(ceil floor);
 
 print "----------------------------------\n";
 print "    CROSSOVER ON SUBSTRATE        \n";
@@ -168,7 +167,8 @@ sub identify_substrate {
 sub print_cluster {
 	my @cluster = @{$_[0]};
 	for(my $i = 0; $i <= $#cluster; $i++){
-		print "atom ", "$cluster[$i][1] ", "$cluster[$i][2] ", "$cluster[$i][3] ","$cluster[$i][4]\n";
+		print "$cluster[$i][0] ", "$cluster[$i][1] ", 
+		"$cluster[$i][2] ", "$cluster[$i][3] ","$cluster[$i][4]\n";
 	}
 }
 
@@ -197,15 +197,16 @@ sub rotate_cluster_along_x {
   my $angle   = $_[1];
 
   my @mean = @{calculate_mean(\@cluster)};
-  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  @cluster = @{shift_to_new_position(\@cluster, \@mean)};
   my @rotatedcluster = ();
-  my @rotatedatom = (0,0,0,0);
+  my @rotatedatom = (0,0,0,0,0);
   
   for (my $i = 0; $i <= $#cluster; $i++){
     $rotatedatom[0] = $cluster[$i][0];
     $rotatedatom[1] = $cluster[$i][1];
     $rotatedatom[2] = $cluster[$i][2]*cos($angle) - $cluster[$i][3]*sin($angle);
-    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*cos($angle); 
+    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*cos($angle);
+    $rotatedatom[4] = $cluster[$i][4]; 
     push(@rotatedcluster, [@rotatedatom]);
   }
 
@@ -218,15 +219,16 @@ sub rotate_cluster_along_y {
   my $angle   = $_[1];
 
   my @mean = @{calculate_mean(\@cluster)};
-  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  @cluster = @{shift_to_new_position(\@cluster, \@mean)};
   my @rotatedcluster = ();
-  my @rotatedatom = (0,0,0,0);
+  my @rotatedatom = (0,0,0,0,0);
   
   for (my $i = 0; $i <= $#cluster; $i++){
     $rotatedatom[0] = $cluster[$i][0];
     $rotatedatom[1] = $cluster[$i][1]*cos($angle) - $cluster[$i][3]*sin($angle);
     $rotatedatom[2] = $cluster[$i][2];
-    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*cos($angle); 
+    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*cos($angle);
+    $rotatedatom[4] = $cluster[$i][4];
     push(@rotatedcluster, [@rotatedatom]);
   }
   @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
@@ -311,7 +313,7 @@ sub make_lower_cut {
   return \@cut;
 }
 
-sub shift_to_origin {
+sub shift_to_new_position {
   my @cluster = @{$_[0]};
   my @mean = @{$_[1]};
   my @shiftedcluster = @cluster;
@@ -388,7 +390,26 @@ sub lowest_value {
 			$lowest_value = $cluster[$i][$direction];
 		}
 	}
+	return $lowest_value;
 }
+
+sub merge_cuts {
+  my @basefirstcut  = @{$_[0]};
+  my @basesecondcut = @{$_[1]};
+  my @meanfirst  = @{$_[2]};
+  my @meansecond = @{$_[3]};
+  my @crossover  = ();
+
+  my @shiftvector = (0, 0, 0);
+  for (my $j = 0; $j <= 2; $j++){
+  	$shiftvector[$j] = $meanfirst[$j] - $meansecond[$j];
+  }
+  @basefirstcut  = @{shift_to_new_position(\@basefirstcut, \@shiftvector)};
+
+  @crossover = @{join_arrays(\@basefirstcut, \@basesecondcut)};
+  return \@crossover;
+}
+
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
@@ -406,12 +427,6 @@ my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 my @first_cluster   = @{identify_cluster(\@first_collection)};
 my @substrate = @{identify_substrate(\@first_collection, \@first_cluster)};
 
-# Printing cluster
-print "First Cluster\n";
-print_cluster(\@first_cluster);
-print "$#first_cluster\n";
-print "$#substrate\n\n";
-
 my @second_collection = @{read_file($ARGV[1])};
 
 # Isolating the lattice vectors and finding the magnitude
@@ -426,15 +441,23 @@ my ($second_lattice_vectors_ref, $second_collection_ref)  = extract_lattice_vect
 my @second_cluster   = @{identify_cluster(\@second_collection)};
 @substrate = @{identify_substrate(\@second_collection, \@second_cluster)};
 
-# Printing cluster$first_cluster[0];
-print "Second Cluster\n";
+#-----------------------------------------------------------------------------------
+
+print "Original First Cluster\n";
+print_cluster(\@first_cluster);
+my $firstclusterlength = $#first_cluster + 1; 
+print "Length of First Cluster: ", "$firstclusterlength\n\n";
+
+print "Original Second Cluster\n";
 print_cluster(\@second_cluster);
-print "$#second_cluster\n";
-print "$#substrate\n";
+my $secondclusterlength = $#second_cluster + 1;
+print "Length of Second Cluster: ", "$secondclusterlength\n\n";
+
+#-----------------------------------------------------------------------------------
 
 my @atom = (0, 0, 0, 0, 0);
 for (my $j = 0; $j <= $#atom; $j++){
-	$atom[j] = $first_cluster[0][$j];
+	$atom[$j] = $first_cluster[0][$j];
 }
 
 my $direction = 0;
@@ -451,7 +474,89 @@ for (my $i = 1; $i <= 3; $i++){
 		$orientation = 'bottom';
 	}
 }
+print $direction,",",$orientation,"\n";
 
+my $cluster_lowest_value = lowest_value(\@first_cluster, $direction);
+
+# Performing Crossover
+#------------------------------------------------------------------------------
+
+my @meanfirst = @{calculate_mean(\@first_cluster)};
+my @meansecond = @{calculate_mean(\@second_cluster)};
+
+print "Centre Coordinates of First Cluster:\n";
+print "$meanfirst[0], ", "$meanfirst[1], ", "$meanfirst[2]\n";
+print "Centre Coordinates of Second Cluster:\n";
+print "$meansecond[0], ", "$meansecond[1], ", "$meansecond[2]\n\n";
 
 # Finding the types of atoms and no of each
 #------------------------------------------------------------------------------
+
+my @types = @{number_of_types(\@first_cluster)};
+my @numberofeachtype = @{atoms_of_each_type(\@types, \@first_cluster)};
+
+# Making and Shifting Cuts (Taking out essential atoms) 
+#-----------------------------------------------------------------------------------------------
+
+my @finalfirstcut  = @{make_upper_cut(\@first_cluster)};
+my @finalsecondcut = @{make_lower_cut(\@second_cluster)};
+my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+my $iteration = 0;
+
+my @firstclusterangles   = (0, 0);
+my @secondclusterangles  = (0, 0); 
+my $finalfirstcutlength  = 0;
+my $finalsecondcutlength = 0;
+
+while ($check eq 'false'){
+  $iteration = $iteration + 1;
+  print "------------------------------\n";
+  print "Iteration: ","$iteration\n";
+  print "------------------------------\n";
+  @firstclusterangles  = @{generate_random_angles()};
+  @secondclusterangles = @{generate_random_angles()};
+
+  # First Cluster 
+  my @xrotatedcluster  = @{rotate_cluster_along_x(\@first_cluster, $firstclusterangles[0])};
+  my @xyrotatedcluster = @{rotate_cluster_along_y(\@xrotatedcluster, $firstclusterangles[1])};
+
+  print "Rotated First Cluster\n";
+  print_cluster(\@xyrotatedcluster);
+  $firstclusterlength = $#xyrotatedcluster + 1;
+  print "\nLength of Rotated First Cluster: ", "$firstclusterlength\n\n";
+  @finalfirstcut = @{make_upper_cut(\@xyrotatedcluster)};
+
+  print "First Cut\n";
+  print_cluster(\@finalfirstcut);
+  $finalfirstcutlength = $#finalfirstcut + 1;
+  print "Length of First Cut: ", "$finalfirstcutlength\n\n";
+
+  # Second Cluster 
+  my @xrotatedcluster  = @{rotate_cluster_along_x(\@second_cluster, $secondclusterangles[0])};
+  my @xyrotatedcluster = @{rotate_cluster_along_y(\@xrotatedcluster, $secondclusterangles[1])};
+
+  print "Rotated Second Cluster\n";
+  print_cluster(\@xyrotatedcluster);
+  $secondclusterlength = $#xyrotatedcluster + 1;
+  print "\nLength of Rotated Second Cluster: ", "$secondclusterlength\n\n";
+  @finalsecondcut = @{make_lower_cut(\@xyrotatedcluster)};
+
+  print "Second Cut\n";
+  print_cluster(\@finalsecondcut);
+  $finalsecondcutlength = $#finalsecondcut + 1;
+  print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
+
+  @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
+  $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+}
+
+#-----------------------------------------------------------------------------------------------
+# Printing out final crossover result
+
+print "Final Crossover\n";
+print_cluster(\@crossover);
+my $crossoverlength = $#crossover + 1;
+print "Length of Crossover: ", "$crossoverlength\n";
+#-----------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
