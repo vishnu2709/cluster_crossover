@@ -476,8 +476,12 @@ for (my $i = 1; $i <= 3; $i++){
 }
 print $direction,",",$orientation,"\n";
 
-my $cluster_lowest_value = lowest_value(\@first_cluster, $direction);
+my $cluster_lowest_value  = 0;
+my $cluster_highest_value = 0;
 
+if ($orientation eq 'top'){
+	$cluster_lowest_value = lowest_value(\@first_cluster, $direction);
+}
 # Performing Crossover
 #------------------------------------------------------------------------------
 
@@ -551,6 +555,24 @@ while ($check eq 'false'){
   $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
 }
 
+print "Pre-Shift Crossover\n";
+print_cluster(\@crossover);
+my $crossoverlength = $#crossover + 1;
+print "Length of Crossover: ", "$crossoverlength\n";
+
+my @shift_vector = (0, 0, 0);
+my $new_cluster_lowest_value = 0;
+
+if ($orientation eq 'top'){
+	$new_cluster_lowest_value = lowest_value(\@crossover, $direction);
+    if ($new_cluster_lowest_value < $cluster_lowest_value){
+    	$shift_vector[2] = $new_cluster_lowest_value - $cluster_lowest_value;
+    }
+}
+print "Shift Vector\n";
+print "$shift_vector[0] ","$shift_vector[1] ","$shift_vector[2]\n";
+my @crossover = @{shift_to_new_position(\@crossover, \@shift_vector)};
+
 #-----------------------------------------------------------------------------------------------
 # Printing out final crossover result
 
@@ -558,5 +580,4 @@ print "Final Crossover\n";
 print_cluster(\@crossover);
 my $crossoverlength = $#crossover + 1;
 print "Length of Crossover: ", "$crossoverlength\n";
-#-----------------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------
