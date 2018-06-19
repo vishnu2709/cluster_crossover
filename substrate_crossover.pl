@@ -352,7 +352,43 @@ sub join_arrays {
   return \@crossover;
 }
 
+sub identify_direction {
+	my @atom = @{$_[0]};
+	my @collection = @{$_[1]};
+	my $direction = $_[2];
+	my @new_atom = (0, 0, 0, 0, 0);
+	my @relative_collection = ();
+	for (my $i = 0; $i <= $#collection ; $i++){
+		$new_atom[0] = $collection[$i][0];
+		$new_atom[1] = $collection[$i][1] - $atom[1];
+		$new_atom[2] = $collection[$i][2] - $atom[2];
+		$new_atom[3] = $collection[$i][3] - $atom[3];
+		$new_atom[4] = $collection[$i][4];
+		push(@relative_collection, [@new_atom]);
+	}
+	my $top_check = 'true';
+	my $bottom_check = 'true';
+	for (my $i = 0; $i <= $#relative_collection; $i++){
+		if ($relative_collection[$i][$direction] > 0){
+			$top_check = 'false';
+		}
+		if ($relative_collection[$i][$direction] < 0){
+			$bottom_check = 'false';
+		}
+	}
+	return ($top_check, $bottom_check);
+}
 
+sub lowest_value {
+	my @cluster = @{$_[0]};
+	my $direction = $_[1];
+	my $lowest_value = $cluster[0][$direction];
+	for (my $i = 0; $i <= $#cluster; $i++){
+		if ($cluster[$i][$direction] < $lowest_value){
+			$lowest_value = $cluster[$i][$direction];
+		}
+	}
+}
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
@@ -390,25 +426,32 @@ my ($second_lattice_vectors_ref, $second_collection_ref)  = extract_lattice_vect
 my @second_cluster   = @{identify_cluster(\@second_collection)};
 @substrate = @{identify_substrate(\@second_collection, \@second_cluster)};
 
-# Printing cluster
+# Printing cluster$first_cluster[0];
 print "Second Cluster\n";
 print_cluster(\@second_cluster);
 print "$#second_cluster\n";
 print "$#substrate\n";
 
+my @atom = (0, 0, 0, 0, 0);
+for (my $j = 0; $j <= $#atom; $j++){
+	$atom[j] = $first_cluster[0][$j];
+}
+
+my $direction = 0;
+my $orientation = '0';
+for (my $i = 1; $i <= 3; $i++){
+	my ($top_check, $bottom_check) = identify_direction(\@atom, \@substrate, $i);
+	if ($top_check eq 'true'){
+		$direction = $i;
+		$orientation = 'top';
+	} 
+
+	if ($bottom_check eq 'true'){
+		$direction = $i;
+		$orientation = 'bottom';
+	}
+}
+
+
 # Finding the types of atoms and no of each
 #------------------------------------------------------------------------------
-
-my @types = @{number_of_types(\@first_cluster)};
-my @numberofeachtype = @{atoms_of_each_type(\@types, \@first_cluster)};
-
-my @finalfirstcut  = @{make_upper_cut(\@firstcluster)};
-my @finalsecondcut = @{make_lower_cut(\@secondcluster)};
-my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
-my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
-my $iteration = 0;
-
-my @firstclusterangles   = (0, 0);
-my @secondclusterangles  = (0, 0); 
-my $finalfirstcutlength  = 0;
-my $finalsecondcutlength = 0;
