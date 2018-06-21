@@ -209,9 +209,9 @@ sub generate_random_angles {
 
 sub rotate_cluster_along_a {
   my @cluster = @{$_[0]};
-  my $angle   = $_[1];
+  my @mean = @{$_[1]};
+  my $angle   = $_[2];
 
-  my @mean = @{calculate_mean(\@cluster)};
   @cluster = @{shift_to_new_position(\@cluster, \@mean)};
   my @rotatedcluster = ();
   my @rotatedatom = (0,0,0,0,0);
@@ -231,7 +231,8 @@ sub rotate_cluster_along_a {
 
 sub rotate_cluster_along_b {
   my @cluster = @{$_[0]};
-  my $angle   = $_[1];
+  my @mean = @{$_[1]};
+  my $angle   = $_[2];
 
   my @mean = @{calculate_mean(\@cluster)};
   @cluster = @{shift_to_new_position(\@cluster, \@mean)};
@@ -574,8 +575,8 @@ while ($check eq 'false'){
     @secondclusterangles = @{generate_random_angles()};
 
     # First Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@first_cluster, $firstclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, $firstclusterangles[1])};
+    my @xrotatedcluster  = @{rotate_cluster_along_a(\@first_cluster, \@meanfirst, $firstclusterangles[0])};
+    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, \@meanfirst, $firstclusterangles[1])};
 
     print "Rotated First Cluster\n";
     print_cluster(\@xyrotatedcluster);
@@ -589,8 +590,8 @@ while ($check eq 'false'){
     print "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, $secondclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, $secondclusterangles[1])};
+    my @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, \@meansecond, $secondclusterangles[0])};
+    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, \@meansecond, $secondclusterangles[1])};
 
     print "Rotated Second Cluster\n";
     print_cluster(\@xyrotatedcluster);
