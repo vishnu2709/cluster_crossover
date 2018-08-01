@@ -365,12 +365,16 @@ sub shift_to_new_position {
 sub shift_back_to_original_position {
   my @cluster = @{$_[0]};
   my @mean = @{$_[1]};
-  my @shiftedcluster = @cluster;
+  my @shiftedatom = (0, 0, 0, 0, 0);
+  my @shiftedcluster = ();
 
   for (my $i = 0; $i <= $#cluster; $i++){
-    $shiftedcluster[$i][1] = $cluster[$i][1] + $mean[0];
-    $shiftedcluster[$i][2] = $cluster[$i][2] + $mean[1];
-    $shiftedcluster[$i][3] = $cluster[$i][3] + $mean[2];
+  	$shiftedatom[0] = $cluster[$i][0];
+    $shiftedatom[1] = $cluster[$i][1] + $mean[0];
+    $shiftedatom[2] = $cluster[$i][2] + $mean[1];
+    $shiftedatom[3] = $cluster[$i][3] + $mean[2];
+    $shiftedatom[4] = $cluster[$i][4];
+    push(@shiftedcluster, [@shiftedatom]);
   }
   return \@shiftedcluster;
 }
@@ -469,7 +473,7 @@ my @lattice_vectors = @{$lattice_vectors_ref};
 my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 
 # Converting fractional coordinates into absolute numbers for simplicity
-@first_collection = @{convert_frac_to_atom($first_collection_ref, $lattice_vectors_ref)};
+@first_collection = @{$first_collection_ref};
 
 # Separating cluster from substrate
 my @first_cluster   = @{identify_cluster(\@first_collection)};
@@ -483,7 +487,7 @@ my ($second_lattice_vectors_ref, $second_collection_ref)  = extract_lattice_vect
 @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 
 # Converting fractional coordinates into absolute numbers for simplicity
-@second_collection = @{convert_frac_to_atom($second_collection_ref, $second_lattice_vectors_ref)};
+@second_collection = @{$second_collection_ref};
 
 # Separating cluster from substrate
 my @second_cluster   = @{identify_cluster(\@second_collection)};
@@ -575,8 +579,10 @@ while ($check eq 'false'){
     @secondclusterangles = @{generate_random_angles()};
 
     # First Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@first_cluster, \@meanfirst, $firstclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, \@meanfirst, $firstclusterangles[1])};
+    my @xrotatedcluster  = @{rotate_cluster_along_a(\@first_cluster, 
+    	\@meanfirst, $firstclusterangles[0])};
+    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
+    	\@meanfirst, $firstclusterangles[1])};
 
     print "Rotated First Cluster\n";
     print_cluster(\@xyrotatedcluster);
@@ -590,8 +596,10 @@ while ($check eq 'false'){
     print "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, \@meansecond, $secondclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, \@meansecond, $secondclusterangles[1])};
+    my @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, 
+    	\@meansecond, $secondclusterangles[0])};
+    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
+    	\@meansecond, $secondclusterangles[1])};
 
     print "Rotated Second Cluster\n";
     print_cluster(\@xyrotatedcluster);
