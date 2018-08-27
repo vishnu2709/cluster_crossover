@@ -234,7 +234,7 @@ sub rotate_cluster_along_b {
   my @mean = @{$_[1]};
   my $angle   = $_[2];
 
-  my @mean = @{calculate_mean(\@cluster)};
+  @mean = @{calculate_mean(\@cluster)};
   @cluster = @{shift_to_new_position(\@cluster, \@mean)};
   my @rotatedcluster = ();
   my @rotatedatom = (0,0,0,0,0);
@@ -511,7 +511,7 @@ for (my $j = 0; $j <= $#atom; $j++){
 	$atom[$j] = $first_cluster[0][$j];
 }
 
-my @atom = (0, 0, 0, 0, 0);
+@atom = (0, 0, 0, 0, 0);
 my $direction = 0;
 my $orientation = '0';
 
@@ -596,9 +596,9 @@ while ($check eq 'false'){
     print "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, 
+    @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, 
     	\@meansecond, $secondclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
+    @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
     	\@meansecond, $secondclusterangles[1])};
 
     print "Rotated Second Cluster\n";
@@ -640,7 +640,7 @@ elsif ($orientation eq 'bottom'){
 
 print "Shift Vector\n";
 print "$shift_vector[0] ","$shift_vector[1] ","$shift_vector[2]\n";
-my @crossover = @{shift_to_new_position(\@crossover, \@shift_vector)};
+@crossover = @{shift_to_new_position(\@crossover, \@shift_vector)};
 
 #-----------------------------------------------------------------------------------------------
 # Printing out final crossover result
@@ -653,6 +653,6 @@ for (my $i = 0; $i <= $#lattice_vectors; $i++){
 my @new_collection = @{join_arrays(\@substrate, \@crossover)};
 # @new_collection = @{convert_atom_to_frac(\@new_collection, \@lattice_vectors)};
 print_cluster(\@new_collection);
-my $crossoverlength = $#crossover + 1;
+$crossoverlength = $#crossover + 1;
 print "Length of Crossover: ", "$crossoverlength\n";
 #-----------------------------------------------------------------------------------------------
