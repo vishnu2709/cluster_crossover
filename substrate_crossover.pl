@@ -402,6 +402,37 @@ sub join_arrays {
   return \@crossover;
 }
 
+sub separate_cluster {
+	my @collection = @{$_[0]};
+	my $direction = $_[1];
+	my $orientation = $_[2];
+	my $length = $_[3];
+	my @cluster = ();
+	my @atom = (0, 0, 0, 0, 0);
+	if ($orientation eq 'top') {
+		@collection = reverse sort { $a->[$direction] <=> $b->[$direction] } @collection;
+		for (my $i = 0; $i < $length; $i++){
+			$atom[0] = $collection[$i][0];
+			$atom[1] = $collection[$i][1];
+			$atom[2] = $collection[$i][2];
+			$atom[3] = $collection[$i][3];
+			$atom[4] = $collection[$i][4];
+			push(@cluster, [@atom]);
+		}
+	}
+	elsif ($orientation eq 'bottom') {
+		@collection = sort { $a->[$direction] <=> $b->[$direction] } @collection;
+		for (my $i = 0; $i < $length; $i++){
+			$atom[0] = $collection[$i][0];
+			$atom[1] = $collection[$i][1];
+			$atom[2] = $collection[$i][2];
+			$atom[3] = $collection[$i][3];
+			$atom[4] = $collection[$i][4];
+			push(@cluster, [@atom]);
+		}
+	}
+	return \@cluster;
+}
 sub identify_direction {
 	my @atom = @{$_[0]};
 	my @collection = @{$_[1]};
@@ -494,13 +525,13 @@ my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 # Separating cluster from substrate
 my $tol = 0.3;
 my @dummy_cluster = ();
-my $temp = 3;
+my $temp = 2;
 my ($first_cluster_ref, $first_substrate_ref) = cluster_iteration(\@first_collection, $tol);
 my @first_cluster = @{$first_cluster_ref};
 my @first_substrate = @{$first_substrate_ref};
 
 while ($temp > 0) {
-	$tol = $tol - 0.02;
+	$tol = $tol - 0.03;
 	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@first_substrate, $tol);
 	@dummy_cluster = @{$dummy_cluster_ref};
 	@first_substrate = @{$dummy_substrate_ref};
@@ -526,7 +557,7 @@ my ($second_cluster_ref, $second_substrate_ref) = cluster_iteration(\@second_col
 my @second_cluster = @{$second_cluster_ref};
 my @second_substrate = @{$second_substrate_ref};
 
-$temp = 3;
+$temp = 2;
 while ($temp > 0) {
 	$tol = $tol - 0.03;
 	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@second_substrate, $tol);
@@ -537,18 +568,8 @@ while ($temp > 0) {
 	}
 	$temp = $temp - 1;
 }
-#-----------------------------------------------------------------------------------
 
-print "Original First Cluster\n";
-print_cluster(\@first_cluster);
-my $firstclusterlength = $#first_cluster + 1; 
-print "Length of First Cluster: ", "$firstclusterlength\n\n";
-
-print "Original Second Cluster\n";
-print_cluster(\@second_cluster);
-my $secondclusterlength = $#second_cluster + 1;
-print "Length of Second Cluster: ", "$secondclusterlength\n\n";
-
+my $length = $ARGV[2];
 #-----------------------------------------------------------------------------------
 
 my @atom = (0, 0, 0, 0, 0);
@@ -573,21 +594,40 @@ for (my $i = 1; $i <= 3; $i++){
 }
 print $direction,",",$orientation,"\n";
 
+my @true_first_cluster  = @{separate_cluster(\@first_collection, $direction, $orientation, $length)};
+my @true_second_cluster = @{separate_cluster(\@second_collection, $direction, $orientation, $length)};
+
 my $cluster_lowest_value  = 0;
 my $cluster_highest_value = 0;
 
 if ($orientation eq 'top'){
-	$cluster_lowest_value = lowest_value(\@first_cluster, $direction);
+	$cluster_lowest_value = lowest_value(\@true_first_cluster, $direction);
 }
 elsif ($orientation eq 'bottom'){
-	$cluster_highest_value = highest_value(\@first_cluster, $direction);
+	$cluster_highest_value = highest_value(\@true_first_cluster, $direction);
 }
+
+
+#-----------------------------------------------------------------------------------
+print "Original First Cluster\n";
+print_cluster(\@true_first_cluster);
+my $firstclusterlength = $#true_first_cluster + 1; 
+print "Length of First Cluster: ", "$firstclusterlength\n\n";
+
+print "Original Second Cluster\n";
+print_cluster(\@true_second_cluster);
+my $secondclusterlength = $#true_second_cluster + 1;
+print "Length of Second Cluster: ", "$secondclusterlength\n\n";
+
+#-----------------------------------------------------------------------------------
+
+
 
 # Performing Crossover
 #------------------------------------------------------------------------------
 
-my @meanfirst = @{calculate_mean(\@first_cluster)};
-my @meansecond = @{calculate_mean(\@second_cluster)};
+my @meanfirst = @{calculate_mean(\@true_first_cluster)};
+my @meansecond = @{calculate_mean(\@true_second_cluster)};
 
 print "Centre Coordinates of First Cluster:\n";
 print "$meanfirst[0], ", "$meanfirst[1], ", "$meanfirst[2]\n";
@@ -597,14 +637,14 @@ print "$meansecond[0], ", "$meansecond[1], ", "$meansecond[2]\n\n";
 # Finding the types of atoms and no of each
 #------------------------------------------------------------------------------
 
-my @types = @{number_of_types(\@first_cluster)};
-my @numberofeachtype = @{atoms_of_each_type(\@types, \@first_cluster)};
+my @types = @{number_of_types(\@true_first_cluster)};
+my @numberofeachtype = @{atoms_of_each_type(\@types, \@true_first_cluster)};
 
 # Making and Shifting Cuts (Taking out essential atoms) 
 #-----------------------------------------------------------------------------------------------
 
-my @finalfirstcut  = @{make_upper_cut(\@first_cluster)};
-my @finalsecondcut = @{make_lower_cut(\@second_cluster)};
+my @finalfirstcut  = @{make_upper_cut(\@true_first_cluster)};
+my @finalsecondcut = @{make_lower_cut(\@true_second_cluster)};
 my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
 my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
 my $iteration = 0;
@@ -623,7 +663,7 @@ while ($check eq 'false'){
     @secondclusterangles = @{generate_random_angles()};
 
     # First Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@first_cluster, 
+    my @xrotatedcluster  = @{rotate_cluster_along_a(\@true_first_cluster, 
     	\@meanfirst, $firstclusterangles[0])};
     my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
     	\@meanfirst, $firstclusterangles[1])};
@@ -640,7 +680,7 @@ while ($check eq 'false'){
     print "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
-    @xrotatedcluster  = @{rotate_cluster_along_a(\@second_cluster, 
+    @xrotatedcluster  = @{rotate_cluster_along_a(\@true_second_cluster, 
     	\@meansecond, $secondclusterangles[0])};
     @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
     	\@meansecond, $secondclusterangles[1])};
