@@ -122,10 +122,13 @@ sub nearest_neighbours {
 
 sub lattice_check {
 	my @relative_collection = @{$_[0]};
-	my $direction = $_[1];
+	my $direction_1 = $_[1];
+	my $direction_2 = $_[2];
+	my $tolerance = $_[3];
 	my $check = 'false';
 	for (my $j = 0; $j <= $#relative_collection; $j++){
-		if (abs($relative_collection[$j][$direction]) < 0.1){
+		if (abs($relative_collection[$j][$direction_1]) < $tolerance and 
+			abs($relative_collection[$j][$direction_2]) < $tolerance){
 			$check = 'true';
 			next;
 		}
@@ -135,6 +138,7 @@ sub lattice_check {
 
 sub identify_cluster {
 	my @collection = @{$_[0]};
+	my $tolerance = $_[1];
 	my @cluster = ();
 	my $check_a = 0;
 	my $check_b = 0;
@@ -149,9 +153,9 @@ sub identify_cluster {
 		$atom[4] = $collection[$i][4];
 		my @relative_collection = @{relative_coordinates(\@atom, \@collection, $i)};
 		my @nearest_neighbour_array  = @{nearest_neighbours(\@relative_collection)};
-		$check_a = lattice_check(\@nearest_neighbour_array, 1);
-		$check_b = lattice_check(\@nearest_neighbour_array, 2);
-		$check_c = lattice_check(\@nearest_neighbour_array, 3);
+		$check_a = lattice_check(\@relative_collection, 1, 2, $tolerance);
+		$check_b = lattice_check(\@relative_collection, 2, 3, $tolerance);
+		$check_c = lattice_check(\@relative_collection, 1, 3, $tolerance);
 		if ($check_a eq 'false' or $check_b eq 'false' or $check_c eq 'false'){
 			push(@cluster, $collection[$i]);
 		}
@@ -352,12 +356,16 @@ sub make_lower_cut {
 sub shift_to_new_position {
   my @cluster = @{$_[0]};
   my @mean = @{$_[1]};
-  my @shiftedcluster = @cluster;
+  my @shiftedatom = (0, 0, 0, 0, 0);
+  my @shiftedcluster = ();
 
   for (my $i = 0; $i <= $#cluster; $i++){
-    $shiftedcluster[$i][1] = $cluster[$i][1] - $mean[0];
-    $shiftedcluster[$i][2] = $cluster[$i][2] - $mean[1];
-    $shiftedcluster[$i][3] = $cluster[$i][3] - $mean[2];
+  	$shiftedatom[0] = $cluster[$i][0];
+    $shiftedatom[1] = $cluster[$i][1] - $mean[0];
+    $shiftedatom[2] = $cluster[$i][2] - $mean[1];
+    $shiftedatom[3] = $cluster[$i][3] - $mean[2];
+    $shiftedatom[4] = $cluster[$i][4];
+    push(@shiftedcluster, [@shiftedatom]);
   }
   return \@shiftedcluster;
 }
@@ -462,6 +470,14 @@ sub merge_cuts {
   return \@crossover;
 }
 
+sub cluster_iteration {
+	my @collection = @{$_[0]};
+	my $tolerance = $_[1];
+	my $cluster_ref = identify_cluster(\@collection, $tolerance);
+	my $substrate_ref = identify_substrate(\@collection, $cluster_ref);
+	return ($cluster_ref, $substrate_ref);
+}
+
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
@@ -476,8 +492,24 @@ my @magnitudes = @{get_magnitude_of_lattice_vectors(\@lattice_vectors)};
 @first_collection = @{$first_collection_ref};
 
 # Separating cluster from substrate
-my @first_cluster   = @{identify_cluster(\@first_collection)};
-my @substrate = @{identify_substrate(\@first_collection, \@first_cluster)};
+my $tol = 0.3;
+my @dummy_cluster = ();
+my $temp = 3;
+my ($first_cluster_ref, $first_substrate_ref) = cluster_iteration(\@first_collection, $tol);
+my @first_cluster = @{$first_cluster_ref};
+my @first_substrate = @{$first_substrate_ref};
+
+while ($temp > 0) {
+	$tol = $tol - 0.02;
+	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@first_substrate, $tol);
+	@dummy_cluster = @{$dummy_cluster_ref};
+	@first_substrate = @{$dummy_substrate_ref};
+	if ($#dummy_cluster != 0){
+		push(@first_cluster, @dummy_cluster);
+	}
+	$temp = $temp - 1;
+}
+
 
 my @second_collection = @{read_file($ARGV[1])};
 
@@ -488,10 +520,23 @@ my ($second_lattice_vectors_ref, $second_collection_ref)  = extract_lattice_vect
 
 # Converting fractional coordinates into absolute numbers for simplicity
 @second_collection = @{$second_collection_ref};
-
+$tol = 0.3;
 # Separating cluster from substrate
-my @second_cluster   = @{identify_cluster(\@second_collection)};
+my ($second_cluster_ref, $second_substrate_ref) = cluster_iteration(\@second_collection, $tol);
+my @second_cluster = @{$second_cluster_ref};
+my @second_substrate = @{$second_substrate_ref};
 
+$temp = 3;
+while ($temp > 0) {
+	$tol = $tol - 0.03;
+	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@second_substrate, $tol);
+	@dummy_cluster = @{$dummy_cluster_ref};
+	@second_substrate = @{$dummy_substrate_ref};
+	if ($#dummy_cluster != 0){
+		push(@second_cluster, @dummy_cluster);
+	}
+	$temp = $temp - 1;
+}
 #-----------------------------------------------------------------------------------
 
 print "Original First Cluster\n";
@@ -511,12 +556,11 @@ for (my $j = 0; $j <= $#atom; $j++){
 	$atom[$j] = $first_cluster[0][$j];
 }
 
-@atom = (0, 0, 0, 0, 0);
 my $direction = 0;
 my $orientation = '0';
 
 for (my $i = 1; $i <= 3; $i++){
-	my ($top_check, $bottom_check) = identify_direction(\@atom, \@substrate, $i);
+	my ($top_check, $bottom_check) = identify_direction(\@atom, \@first_substrate, $i);
 	if ($top_check eq 'true'){
 		$direction = $i;
 		$orientation = 'top';
@@ -650,7 +694,7 @@ for (my $i = 0; $i <= $#lattice_vectors; $i++){
 	print "$lattice_vectors[$i][0] ","$lattice_vectors[$i][1] ",
 	"$lattice_vectors[$i][2] ","$lattice_vectors[$i][3]\n";
 }
-my @new_collection = @{join_arrays(\@substrate, \@crossover)};
+my @new_collection = @{join_arrays(\@first_substrate, \@crossover)};
 # @new_collection = @{convert_atom_to_frac(\@new_collection, \@lattice_vectors)};
 print_cluster(\@new_collection);
 $crossoverlength = $#crossover + 1;
