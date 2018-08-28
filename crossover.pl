@@ -57,8 +57,8 @@ sub calculate_mean {
 
 sub generate_random_angles {
   my @randangles = (0.0, 0.0);
-  @randangles[0] = rand(2*pi);
-  @randangles[1] = rand(2*pi);
+  @randangles[0] = rand(pi);
+  @randangles[1] = rand(pi);
   return \@randangles;
 }
 
@@ -67,15 +67,15 @@ sub rotate_cluster_along_x {
   my $angle   = $_[1];
 
   my @mean = @{calculate_mean(\@cluster)};
-  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @temp_cluster = @{shift_to_origin(\@cluster, \@mean)};
   my @rotatedcluster = ();
   my @rotatedatom = (0,0,0,0);
   
-  for (my $i = 0; $i <= $#cluster; $i++){
-    $rotatedatom[0] = $cluster[$i][0];
-    $rotatedatom[1] = $cluster[$i][1];
-    $rotatedatom[2] = $cluster[$i][2]*cos($angle) - $cluster[$i][3]*sin($angle);
-    $rotatedatom[3] = $cluster[$i][2]*sin($angle) + $cluster[$i][3]*cos($angle); 
+  for (my $i = 0; $i <= $#temp_cluster; $i++){
+    $rotatedatom[0] = $temp_cluster[$i][0];
+    $rotatedatom[1] = $temp_cluster[$i][1];
+    $rotatedatom[2] = $temp_cluster[$i][2]*cos($angle) - $temp_cluster[$i][3]*sin($angle);
+    $rotatedatom[3] = $temp_cluster[$i][2]*sin($angle) + $temp_cluster[$i][3]*cos($angle); 
     push(@rotatedcluster, [@rotatedatom]);
   }
 
@@ -88,15 +88,15 @@ sub rotate_cluster_along_y {
   my $angle   = $_[1];
 
   my @mean = @{calculate_mean(\@cluster)};
-  @cluster = @{shift_to_origin(\@cluster, \@mean)};
+  my @temp_cluster = @{shift_to_origin(\@cluster, \@mean)};
   my @rotatedcluster = ();
   my @rotatedatom = (0,0,0,0);
   
-  for (my $i = 0; $i <= $#cluster; $i++){
-    $rotatedatom[0] = $cluster[$i][0];
-    $rotatedatom[1] = $cluster[$i][1]*cos($angle) - $cluster[$i][3]*sin($angle);
-    $rotatedatom[2] = $cluster[$i][2];
-    $rotatedatom[3] = $cluster[$i][1]*sin($angle) + $cluster[$i][3]*cos($angle); 
+  for (my $i = 0; $i <= $#temp_cluster; $i++){
+    $rotatedatom[0] = $temp_cluster[$i][0];
+    $rotatedatom[1] = $temp_cluster[$i][1]*cos($angle) - $temp_cluster[$i][3]*sin($angle);
+    $rotatedatom[2] = $temp_cluster[$i][2];
+    $rotatedatom[3] = $temp_cluster[$i][1]*sin($angle) + $temp_cluster[$i][3]*cos($angle); 
     push(@rotatedcluster, [@rotatedatom]);
   }
   @rotatedcluster = @{shift_back_to_original_position(\@rotatedcluster, \@mean)};
@@ -184,12 +184,15 @@ sub make_lower_cut {
 sub shift_to_origin {
   my @cluster = @{$_[0]};
   my @mean = @{$_[1]};
-  my @shiftedcluster = @cluster;
+  my @shiftedcluster = ();
+  my @atom = (0, 0, 0, 0);
 
   for (my $i = 0; $i <= $#cluster; $i++){
-    $shiftedcluster[$i][1] = $cluster[$i][1] - $mean[0];
-    $shiftedcluster[$i][2] = $cluster[$i][2] - $mean[1];
-    $shiftedcluster[$i][3] = $cluster[$i][3] - $mean[2];
+    $atom[0] = $cluster[$i][0];
+    $atom[1] = $cluster[$i][1] - $mean[0];
+    $atom[2] = $cluster[$i][2] - $mean[1];
+    $atom[3] = $cluster[$i][3] - $mean[2];
+    push(@shiftedcluster, [@atom]);
   }
   return \@shiftedcluster;
 }
@@ -197,12 +200,15 @@ sub shift_to_origin {
 sub shift_back_to_original_position {
   my @cluster = @{$_[0]};
   my @mean = @{$_[1]};
-  my @shiftedcluster = @cluster;
+  my @shiftedcluster = ();
+  my @atom = (0, 0, 0, 0);
 
   for (my $i = 0; $i <= $#cluster; $i++){
-    $shiftedcluster[$i][1] = $cluster[$i][1] + $mean[0];
-    $shiftedcluster[$i][2] = $cluster[$i][2] + $mean[1];
-    $shiftedcluster[$i][3] = $cluster[$i][3] + $mean[2];
+    $atom[0] = $cluster[$i][0];
+    $atom[1] = $cluster[$i][1] + $mean[0];
+    $atom[2] = $cluster[$i][2] + $mean[1];
+    $atom[3] = $cluster[$i][3] + $mean[2];
+    push(@shiftedcluster, [@atom]);
   }
   return \@shiftedcluster;
 }
@@ -212,13 +218,8 @@ sub join_arrays {
   my @secondarray = @{$_[1]};
   my @crossover = ();
   
-  for (my $i = 0; $i <= $#firstarray; $i++){
-    push(@crossover, $firstarray[$i]);
-  }
-
-  for (my $i = 0; $i <= $#secondarray; $i++){
-    push(@crossover, $secondarray[$i]);
-  }
+  push(@crossover, @firstarray);
+  push(@crossover, @secondarray);
   return \@crossover;
 }
 
@@ -233,6 +234,7 @@ sub merge_cuts {
   @basesecondcut = @{shift_to_origin(\@basesecondcut, \@meansecond)};
 
   @crossover = @{join_arrays(\@basefirstcut, \@basesecondcut)};
+  @crossover = @{shift_back_to_original_position(\@crossover, \@meanfirst)};
   return \@crossover;
 }
 
