@@ -186,8 +186,17 @@ sub identify_substrate {
 sub print_cluster {
 	my @cluster = @{$_[0]};
 	for(my $i = 0; $i <= $#cluster; $i++){
-		print  "$cluster[$i][0] ", "$cluster[$i][1] ", 
+		print "$cluster[$i][0] ", "$cluster[$i][1] ", 
 		"$cluster[$i][2] ", "$cluster[$i][3] ","$cluster[$i][4]\n";
+	}
+}
+
+sub write_cluster {
+	my @cluster = @{$_[0]};
+	my $filename = $_[1];
+	for(my $i = 0; $i <= $#cluster; $i++){
+		print FH "$cluster[$i][0] ", "$cluster[$i][1] ",
+		"$cluster[$i][2] ", "$cluster[$i][3] ", "$cluster[$i][4]\n";
 	}
 }
 
@@ -593,12 +602,12 @@ elsif ($orientation eq 'bottom'){
 
 #-----------------------------------------------------------------------------------
 print FH "Original First Cluster\n";
-print_cluster(\@true_first_cluster);
+write_cluster(\@true_first_cluster, $filename);
 my $firstclusterlength = $#true_first_cluster + 1; 
 print FH "Length of First Cluster: ", "$firstclusterlength\n\n";
 
 print FH "Original Second Cluster\n";
-print_cluster(\@true_second_cluster);
+write_cluster(\@true_second_cluster, $filename);
 my $secondclusterlength = $#true_second_cluster + 1;
 print FH "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
@@ -652,13 +661,13 @@ while ($check eq 'false'){
     	\@meanfirst, $firstclusterangles[1])};
 
     print FH "Rotated First Cluster\n";
-    print_cluster(\@xyrotatedcluster);
+    write_cluster(\@xyrotatedcluster, $filename);
     $firstclusterlength = $#xyrotatedcluster + 1;
     print FH "\nLength of Rotated First Cluster: ", "$firstclusterlength\n\n";
     @finalfirstcut = @{make_upper_cut(\@xyrotatedcluster)};
 
     print FH "First Cut\n";
-    print_cluster(\@finalfirstcut);
+    write_cluster(\@finalfirstcut, $filename);
     $finalfirstcutlength = $#finalfirstcut + 1;
     print FH "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
@@ -669,13 +678,13 @@ while ($check eq 'false'){
     	\@meansecond, $secondclusterangles[1])};
 
     print FH "Rotated Second Cluster\n";
-    print_cluster(\@xyrotatedcluster);
+    write_cluster(\@xyrotatedcluster, $filename);
     $secondclusterlength = $#xyrotatedcluster + 1;
     print FH "\nLength of Rotated Second Cluster: ", "$secondclusterlength\n\n";
     @finalsecondcut = @{make_lower_cut(\@xyrotatedcluster)};
 
     print FH "Second Cut\n";
-    print_cluster(\@finalsecondcut);
+    write_cluster(\@finalsecondcut, $filename);
     $finalsecondcutlength = $#finalsecondcut + 1;
     print FH "Length of Second Cut: ", "$finalsecondcutlength\n\n";
 
@@ -684,7 +693,7 @@ while ($check eq 'false'){
 }
 
 print FH "Pre-Shift Crossover\n";
-print_cluster(\@crossover);
+write_cluster(\@crossover, $filename);
 my $crossoverlength = $#crossover + 1;
 print FH "Length of Crossover: ", "$crossoverlength\n";
 
@@ -720,6 +729,7 @@ for (my $i = 0; $i <= $#lattice_vectors; $i++){
 my @new_collection = @{join_arrays(\@first_substrate, \@crossover)};
 # @new_collection = @{convert_atom_to_frac(\@new_collection, \@lattice_vectors)};
 print_cluster(\@new_collection);
+write_cluster(\@new_collection, $filename);
 $crossoverlength = $#crossover + 1;
 print FH "Length of Crossover: ", "$crossoverlength\n";
 
