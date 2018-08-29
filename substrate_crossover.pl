@@ -186,7 +186,7 @@ sub identify_substrate {
 sub print_cluster {
 	my @cluster = @{$_[0]};
 	for(my $i = 0; $i <= $#cluster; $i++){
-		print "$cluster[$i][0] ", "$cluster[$i][1] ", 
+		print  "$cluster[$i][0] ", "$cluster[$i][1] ", 
 		"$cluster[$i][2] ", "$cluster[$i][3] ","$cluster[$i][4]\n";
 	}
 }
@@ -433,6 +433,7 @@ sub separate_cluster {
 	}
 	return \@cluster;
 }
+
 sub identify_direction {
 	my @atom = @{$_[0]};
 	my @collection = @{$_[1]};
@@ -512,6 +513,11 @@ sub cluster_iteration {
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
+my $str;
+
+my $filename = 'substrate_crossover_output.txt';
+open(FH, '>', $filename) or die $!;
+
 my @first_collection = @{read_file($ARGV[0])};
 
 # Isolating the lattice vectors and finding the magnitude
@@ -530,17 +536,6 @@ my ($first_cluster_ref, $first_substrate_ref) = cluster_iteration(\@first_collec
 my @first_cluster = @{$first_cluster_ref};
 my @first_substrate = @{$first_substrate_ref};
 
-while ($temp > 0) {
-	$tol = $tol - 0.03;
-	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@first_substrate, $tol);
-	@dummy_cluster = @{$dummy_cluster_ref};
-	@first_substrate = @{$dummy_substrate_ref};
-	if ($#dummy_cluster != 0){
-		push(@first_cluster, @dummy_cluster);
-	}
-	$temp = $temp - 1;
-}
-
 
 my @second_collection = @{read_file($ARGV[1])};
 
@@ -556,18 +551,6 @@ $tol = 0.3;
 my ($second_cluster_ref, $second_substrate_ref) = cluster_iteration(\@second_collection, $tol);
 my @second_cluster = @{$second_cluster_ref};
 my @second_substrate = @{$second_substrate_ref};
-
-$temp = 2;
-while ($temp > 0) {
-	$tol = $tol - 0.03;
-	my ($dummy_cluster_ref, $dummy_substrate_ref) = cluster_iteration(\@second_substrate, $tol);
-	@dummy_cluster = @{$dummy_cluster_ref};
-	@second_substrate = @{$dummy_substrate_ref};
-	if ($#dummy_cluster != 0){
-		push(@second_cluster, @dummy_cluster);
-	}
-	$temp = $temp - 1;
-}
 
 my $length = $ARGV[2];
 #-----------------------------------------------------------------------------------
@@ -592,7 +575,7 @@ for (my $i = 1; $i <= 3; $i++){
 		$orientation = 'bottom';
 	}
 }
-print $direction,",",$orientation,"\n";
+print FH $direction,",",$orientation,"\n";
 
 my @true_first_cluster  = @{separate_cluster(\@first_collection, $direction, $orientation, $length)};
 my @true_second_cluster = @{separate_cluster(\@second_collection, $direction, $orientation, $length)};
@@ -609,15 +592,15 @@ elsif ($orientation eq 'bottom'){
 
 
 #-----------------------------------------------------------------------------------
-print "Original First Cluster\n";
+print FH "Original First Cluster\n";
 print_cluster(\@true_first_cluster);
 my $firstclusterlength = $#true_first_cluster + 1; 
-print "Length of First Cluster: ", "$firstclusterlength\n\n";
+print FH "Length of First Cluster: ", "$firstclusterlength\n\n";
 
-print "Original Second Cluster\n";
+print FH "Original Second Cluster\n";
 print_cluster(\@true_second_cluster);
 my $secondclusterlength = $#true_second_cluster + 1;
-print "Length of Second Cluster: ", "$secondclusterlength\n\n";
+print FH "Length of Second Cluster: ", "$secondclusterlength\n\n";
 
 #-----------------------------------------------------------------------------------
 
@@ -629,10 +612,10 @@ print "Length of Second Cluster: ", "$secondclusterlength\n\n";
 my @meanfirst = @{calculate_mean(\@true_first_cluster)};
 my @meansecond = @{calculate_mean(\@true_second_cluster)};
 
-print "Centre Coordinates of First Cluster:\n";
-print "$meanfirst[0], ", "$meanfirst[1], ", "$meanfirst[2]\n";
-print "Centre Coordinates of Second Cluster:\n";
-print "$meansecond[0], ", "$meansecond[1], ", "$meansecond[2]\n\n";
+print FH "Centre Coordinates of First Cluster:\n";
+print FH "$meanfirst[0], ", "$meanfirst[1], ", "$meanfirst[2]\n";
+print FH "Centre Coordinates of Second Cluster:\n";
+print FH "$meansecond[0], ", "$meansecond[1], ", "$meansecond[2]\n\n";
 
 # Finding the types of atoms and no of each
 #------------------------------------------------------------------------------
@@ -656,9 +639,9 @@ my $finalsecondcutlength = 0;
 
 while ($check eq 'false'){
     $iteration = $iteration + 1;
-    print "------------------------------\n";
-    print "Iteration: ","$iteration\n";
-    print "------------------------------\n";
+    print FH "------------------------------\n";
+    print FH "Iteration: ","$iteration\n";
+    print FH "------------------------------\n";
     @firstclusterangles  = @{generate_random_angles()};
     @secondclusterangles = @{generate_random_angles()};
 
@@ -668,16 +651,16 @@ while ($check eq 'false'){
     my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
     	\@meanfirst, $firstclusterangles[1])};
 
-    print "Rotated First Cluster\n";
+    print FH "Rotated First Cluster\n";
     print_cluster(\@xyrotatedcluster);
     $firstclusterlength = $#xyrotatedcluster + 1;
-    print "\nLength of Rotated First Cluster: ", "$firstclusterlength\n\n";
+    print FH "\nLength of Rotated First Cluster: ", "$firstclusterlength\n\n";
     @finalfirstcut = @{make_upper_cut(\@xyrotatedcluster)};
 
-    print "First Cut\n";
+    print FH "First Cut\n";
     print_cluster(\@finalfirstcut);
     $finalfirstcutlength = $#finalfirstcut + 1;
-    print "Length of First Cut: ", "$finalfirstcutlength\n\n";
+    print FH "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
     @xrotatedcluster  = @{rotate_cluster_along_a(\@true_second_cluster, 
@@ -685,25 +668,25 @@ while ($check eq 'false'){
     @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
     	\@meansecond, $secondclusterangles[1])};
 
-    print "Rotated Second Cluster\n";
+    print FH "Rotated Second Cluster\n";
     print_cluster(\@xyrotatedcluster);
     $secondclusterlength = $#xyrotatedcluster + 1;
-    print "\nLength of Rotated Second Cluster: ", "$secondclusterlength\n\n";
+    print FH "\nLength of Rotated Second Cluster: ", "$secondclusterlength\n\n";
     @finalsecondcut = @{make_lower_cut(\@xyrotatedcluster)};
 
-    print "Second Cut\n";
+    print FH "Second Cut\n";
     print_cluster(\@finalsecondcut);
     $finalsecondcutlength = $#finalsecondcut + 1;
-    print "Length of Second Cut: ", "$finalsecondcutlength\n\n";
+    print FH "Length of Second Cut: ", "$finalsecondcutlength\n\n";
 
     @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
     $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
 }
 
-print "Pre-Shift Crossover\n";
+print FH "Pre-Shift Crossover\n";
 print_cluster(\@crossover);
 my $crossoverlength = $#crossover + 1;
-print "Length of Crossover: ", "$crossoverlength\n";
+print FH "Length of Crossover: ", "$crossoverlength\n";
 
 my @shift_vector = (0, 0, 0);
 my $new_cluster_lowest_value = 0;
@@ -722,21 +705,23 @@ elsif ($orientation eq 'bottom'){
 	}
 }
 
-print "Shift Vector\n";
-print "$shift_vector[0] ","$shift_vector[1] ","$shift_vector[2]\n";
+print FH "Shift Vector\n";
+print FH "$shift_vector[0] ","$shift_vector[1] ","$shift_vector[2]\n";
 @crossover = @{shift_to_new_position(\@crossover, \@shift_vector)};
 
 #-----------------------------------------------------------------------------------------------
 # Printing out final crossover result
 
-print "Final Crossover\n";
+print FH "Final Crossover\n";
 for (my $i = 0; $i <= $#lattice_vectors; $i++){
-	print "$lattice_vectors[$i][0] ","$lattice_vectors[$i][1] ",
+	print FH "$lattice_vectors[$i][0] ","$lattice_vectors[$i][1] ",
 	"$lattice_vectors[$i][2] ","$lattice_vectors[$i][3]\n";
 }
 my @new_collection = @{join_arrays(\@first_substrate, \@crossover)};
 # @new_collection = @{convert_atom_to_frac(\@new_collection, \@lattice_vectors)};
 print_cluster(\@new_collection);
 $crossoverlength = $#crossover + 1;
-print "Length of Crossover: ", "$crossoverlength\n";
+print FH "Length of Crossover: ", "$crossoverlength\n";
+
+close(FH);
 #-----------------------------------------------------------------------------------------------
