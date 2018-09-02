@@ -285,6 +285,34 @@ sub rotate_cluster_along_c {
   return \@rotatedcluster;
 }
 
+sub generate_rotated_cluster {
+	my @cluster   = @{$_[0]};
+	my @mean      = @{$_[1]};
+	my @angles    = @{$_[2]};
+	my $direction = $_[2];
+	my @xyrotatedcluster = ();
+
+	if ($direction == 1) {
+		my @xrotatedcluster  = @{rotate_cluster_along_b(\@cluster, 
+    	\@mean, $angles[0])};
+        my @xyrotatedcluster = @{rotate_cluster_along_c(\@xrotatedcluster, 
+    	\@mean, $angles[1])};
+	}
+	elsif ($direction == 2) {
+        my @xrotatedcluster  = @{rotate_cluster_along_a(\@cluster, 
+    	\@mean, $angles[0])};
+        my @xyrotatedcluster = @{rotate_cluster_along_c(\@xrotatedcluster, 
+    	\@mean, $angles[1])};
+	}
+	else {
+		my @xrotatedcluster  = @{rotate_cluster_along_a(\@cluster, 
+    	\@mean, $angles[0])};
+        my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
+    	\@mean, $angles[1])};
+	}
+	return \@xyrotatedcluster;
+}
+
 sub check_stoichiometry {
   my @cluster = @{$_[0]};
   my @properstoich = @{$_[1]};
@@ -654,11 +682,9 @@ while ($check eq 'false'){
     @firstclusterangles  = @{generate_random_angles()};
     @secondclusterangles = @{generate_random_angles()};
 
-    # First Cluster 
-    my @xrotatedcluster  = @{rotate_cluster_along_a(\@true_first_cluster, 
-    	\@meanfirst, $firstclusterangles[0])};
-    my @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
-    	\@meanfirst, $firstclusterangles[1])};
+    # First Cluster
+    my @xyrotatedcluster = @{generate_rotated_cluster(\@true_first_cluster, 
+    	\@meanfirst, $firstclusterangles[1], $direction)};
 
     print FH "Rotated First Cluster\n";
     write_cluster(\@xyrotatedcluster, $filename);
@@ -672,9 +698,7 @@ while ($check eq 'false'){
     print FH "Length of First Cut: ", "$finalfirstcutlength\n\n";
 
     # Second Cluster 
-    @xrotatedcluster  = @{rotate_cluster_along_a(\@true_second_cluster, 
-    	\@meansecond, $secondclusterangles[0])};
-    @xyrotatedcluster = @{rotate_cluster_along_b(\@xrotatedcluster, 
+    @xyrotatedcluster = @{generate_rotated_cluster(\@true_second_cluster, 
     	\@meansecond, $secondclusterangles[1])};
 
     print FH "Rotated Second Cluster\n";
