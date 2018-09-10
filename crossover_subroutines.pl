@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 use strict;
 use warnings;
 use Math::Trig;
@@ -9,17 +10,16 @@ sub read_file {
 	my $fname = $_[0];
 	my @collection = ();
 
-	open (my $fh, '<:encoding(UTF-8)', $fname)
-	 or die "Couldn't open file!";
+	open GEOMETRY,  "< $fname" or die $!;
 
-	while (my $row = <$fh>){
+	while (my $row = <GEOMETRY>){
 		chomp $row;
 		my @atom = split(" ",$row);
-		push(@collection, [@atom]);
+		push(@collection, [@atom]);            
 	}
 	return \@collection;
 }
-1;
+
 
 sub extract_lattice_vectors {
 	my @collection = @{$_[0]};
@@ -212,8 +212,8 @@ sub calculate_mean {
 
 sub generate_random_angles {
   my @randangles = (0.0, 0.0);
-  @randangles[0] = rand(2*pi);
-  @randangles[1] = rand(2*pi);
+  $randangles[0] = rand(2*pi);
+  $randangles[1] = rand(2*pi);
   return \@randangles;
 }
 
@@ -544,3 +544,5 @@ sub cluster_iteration {
 	my $substrate_ref = identify_substrate(\@collection, $cluster_ref);
 	return ($cluster_ref, $substrate_ref);
 }
+
+1;
