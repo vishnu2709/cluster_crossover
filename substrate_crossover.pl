@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 use strict;
 use warnings;
 use Math::Trig;
@@ -5,7 +6,7 @@ use File::Basename qw(dirname);
 use Cwd qw(abs_path);
 use lib dirname(abs_path $0);
 
-require 'crossover_subroutines.pl';
+require 'crossover_subroutines.plx';
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
