@@ -6,7 +6,7 @@ use File::Basename qw(dirname);
 use Cwd qw(abs_path);
 use lib dirname(abs_path $0);
 
-require 'crossover_subroutines.plx';
+require 'crossover_subroutines.pl';
 # --------------------------------------------------------------------------------
 # Reading all of the data into an array
 
@@ -56,16 +56,19 @@ my @second_substrate = @{$second_substrate_ref};
 my $length = $ARGV[2];
 #-----------------------------------------------------------------------------------
 
-my @atom = (0, 0, 0, 0, 0);
-for (my $j = 0; $j <= $#atom; $j++){
-	$atom[$j] = $first_cluster[0][$j];
-}
+my @atom1 = (0, 0, 0, 0, 0);
+my @atom2 = (0, 0, 0, 0, 0);
 
 my $direction = 0;
 my $orientation = '0';
 
 for (my $i = 1; $i <= 3; $i++){
-	my ($top_check, $bottom_check) = identify_direction(\@atom, \@first_substrate, $i);
+	@first_cluster = reverse sort { $a->[$i] <=> $b->[$i] } @first_cluster;
+	for (my $j = 0; $j <= 4; $j++){
+	    $atom1[$j] = $first_cluster[0][$j];
+		$atom2[$j] = $first_cluster[$#first_cluster][$j];
+    }
+	my ($top_check, $bottom_check) = identify_direction(\@atom1, \@atom2, \@first_substrate, $i);
 	if ($top_check eq 'true'){
 		$direction = $i;
 		$orientation = 'top';
@@ -76,10 +79,12 @@ for (my $i = 1; $i <= 3; $i++){
 		$orientation = 'bottom';
 	}
 }
+
 print $fh $direction,",",$orientation,"\n";
 
 my @true_first_cluster  = @{separate_cluster(\@first_collection, $direction, $orientation, $length)};
 my @true_second_cluster = @{separate_cluster(\@second_collection, $direction, $orientation, $length)};
+@first_substrate = @{identify_substrate(\@first_collection, \@true_first_cluster)};
 
 my $cluster_lowest_value  = 0;
 my $cluster_highest_value = 0;
@@ -129,8 +134,8 @@ my @numberofeachtype = @{atoms_of_each_type(\@types, \@true_first_cluster)};
 
 my @finalfirstcut  = @{make_upper_cut(\@true_first_cluster)};
 my @finalsecondcut = @{make_lower_cut(\@true_second_cluster)};
-my @crossover = @{merge_cuts(\@finalfirstcut, \@finalsecondcut, \@meanfirst, \@meansecond)};
-my $check     = check_stoichiometry(\@crossover, \@numberofeachtype, \@types);
+my @crossover;
+my $check     = 'false';
 my $iteration = 0;
 
 my @firstclusterangles   = (0, 0);
