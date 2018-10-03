@@ -470,26 +470,38 @@ sub separate_cluster {
 }
 
 sub identify_direction {
-	my @atom = @{$_[0]};
-	my @collection = @{$_[1]};
-	my $direction = $_[2];
+	my @atom1 = @{$_[0]};
+	my @atom2 = @{$_[1]};
+	my @collection = @{$_[2]};
+	my $direction = $_[3];
 	my @new_atom = (0, 0, 0, 0, 0);
-	my @relative_collection = ();
+	my @relative_collection1 = ();
+	my @relative_collection2 = ();
 	for (my $i = 0; $i <= $#collection ; $i++){
 		$new_atom[0] = $collection[$i][0];
-		$new_atom[1] = $collection[$i][1] - $atom[1];
-		$new_atom[2] = $collection[$i][2] - $atom[2];
-		$new_atom[3] = $collection[$i][3] - $atom[3];
+		$new_atom[1] = $collection[$i][1] - $atom1[1];
+		$new_atom[2] = $collection[$i][2] - $atom1[2];
+		$new_atom[3] = $collection[$i][3] - $atom1[3];
 		$new_atom[4] = $collection[$i][4];
-		push(@relative_collection, [@new_atom]);
+		push(@relative_collection1, [@new_atom]);
+	}
+	for (my $i = 0; $i <= $#collection ; $i++){
+		$new_atom[0] = $collection[$i][0];
+		$new_atom[1] = $collection[$i][1] - $atom2[1];
+		$new_atom[2] = $collection[$i][2] - $atom2[2];
+		$new_atom[3] = $collection[$i][3] - $atom2[3];
+		$new_atom[4] = $collection[$i][4];
+		push(@relative_collection2, [@new_atom]);
 	}
 	my $top_check = 'true';
 	my $bottom_check = 'true';
-	for (my $i = 0; $i <= $#relative_collection; $i++){
-		if ($relative_collection[$i][$direction] > 0){
+	for (my $i = 0; $i <= $#relative_collection1; $i++){
+		if ($relative_collection1[$i][$direction] > 0){
 			$top_check = 'false';
 		}
-		else {
+	}
+	for (my $i = 0; $i <= $#relative_collection2; $i++){
+		if ($relative_collection2[$i][$direction] < 0){
 			$bottom_check = 'false';
 		}
 	}
