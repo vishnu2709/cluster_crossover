@@ -88,12 +88,16 @@ my @true_second_cluster = @{separate_cluster(\@second_collection, $direction, $o
 
 my $cluster_lowest_value  = 0;
 my $cluster_highest_value = 0;
+my $substrate_highest_value = 0;
+my $substrate_lowest_value = 0;
 
 if ($orientation eq 'top'){
 	$cluster_lowest_value = lowest_value(\@true_first_cluster, $direction);
+        $substrate_lowest_value = lowest_value(\@first_substrate, $direction);
 }
 elsif ($orientation eq 'bottom'){
 	$cluster_highest_value = highest_value(\@true_first_cluster, $direction);
+        $substrate_highest_value = highest_value(\@first_substrate, $direction);
 }
 
 
@@ -196,14 +200,14 @@ my $new_cluster_highest_value = 0;
 
 if ($orientation eq 'top'){
 	$new_cluster_lowest_value = lowest_value(\@crossover, $direction);
-    if ($new_cluster_lowest_value < $cluster_lowest_value){
-    	$shift_vector[$direction - 1] = $new_cluster_lowest_value - $cluster_lowest_value;
+    if ($new_cluster_lowest_value < $substrate_lowest_value){
+    	$shift_vector[$direction - 1] = ($substrate_lowest_value - $cluster_lowest_value) + 0.8;
     }
 }
 elsif ($orientation eq 'bottom'){
 	$new_cluster_highest_value = highest_value(\@crossover, $direction);
-	if ($new_cluster_highest_value > $cluster_highest_value){
-		$shift_vector[$direction - 1] = $new_cluster_highest_value - $cluster_highest_value;
+	if ($substrate_highest_value > $cluster_highest_value){
+		$shift_vector[$direction - 1] = ($substrate_highest_value - $cluster_highest_value) - 0.8;
 	}
 }
 
